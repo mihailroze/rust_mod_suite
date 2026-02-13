@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Конфигуратор лута Rust</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="title">
+      <h1>Конфигуратор лута контейнеров Rust</h1>
+      <p>Генерация готового <code>ContainerLootManager.json</code> для сервера</p>
+    </div>
+    <div class="top-actions">
+      <label class="file-btn">
+        Загрузить конфиг
+        <input id="configFileInput" type="file" accept=".json,application/json">
+      </label>
+      <label class="file-btn">
+        Загрузить каталог
+        <input id="catalogFileInput" type="file" accept=".json,application/json">
+      </label>
+      <button id="resetBtn" class="btn secondary">Сброс</button>
+      <button id="copyBtn" class="btn secondary">Копировать JSON</button>
+      <button id="downloadBtn" class="btn primary">Скачать JSON</button>
+      <button id="saveServerBtn" class="btn ok">Сохранить на сервер</button>
+      <span id="saveServerStatus" class="hint"></span>
+      <button id="deployPluginBtn" class="btn ok">Развернуть плагин</button>
+      <span id="deployPluginStatus" class="hint"></span>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="panel globals">
+      <h2>Общие</h2>
+      <label class="row check">
+        <input id="pluginEnabled" type="checkbox">
+        <span>Плагин включен</span>
+      </label>
+      <label class="row check">
+        <input id="useVanillaNoRule" type="checkbox">
+        <span>Использовать ванильный лут, если правило не найдено</span>
+      </label>
+      <label class="row check">
+        <input id="debugLog" type="checkbox">
+        <span>Debug лог</span>
+      </label>
+      <div class="hint" id="catalogInfo">Каталог: не загружен</div>
+    </section>
+
+    <section class="panel rules">
+      <h2>Правила</h2>
+      <div class="row">
+        <input id="ruleSearch" type="text" placeholder="Поиск ключа контейнера">
+      </div>
+      <div class="row">
+        <input id="newRuleKey" type="text" placeholder="Новый ключ (например loot-barrel-1)" list="containerKeysList">
+        <button id="addRuleBtn" class="btn">Добавить</button>
+      </div>
+      <div class="row">
+        <button id="addAllRulesBtn" class="btn secondary">Создать правила для всех контейнеров</button>
+      </div>
+      <div id="rulesList" class="rules-list"></div>
+      <datalist id="containerKeysList"></datalist>
+    </section>
+
+    <section class="panel editor">
+      <h2>Редактор правила</h2>
+      <div id="noRuleState" class="hint">Выберите или создайте правило.</div>
+      <div id="ruleEditor" class="hidden">
+        <div class="grid2">
+          <label class="row">
+            <span>Ключ контейнера</span>
+            <input id="ruleKeyInput" type="text">
+          </label>
+          <div class="row inline-actions">
+            <button id="renameRuleBtn" class="btn">Переименовать</button>
+            <button id="deleteRuleBtn" class="btn danger">Удалить правило</button>
+          </div>
+        </div>
+
+        <div class="grid3">
+          <label class="row check"><input id="ruleEnabled" type="checkbox"><span>Включено</span></label>
+          <label class="row check"><input id="ruleOverride" type="checkbox"><span>Заменять ванильный лут</span></label>
+          <label class="row check"><input id="ruleDuplicates" type="checkbox"><span>Разрешить дубли</span></label>
+          <label class="row check"><input id="ruleForceOne" type="checkbox"><span>Гарантировать минимум 1 предмет</span></label>
+          <label class="row">
+            <span>Мин. роллов</span>
+            <input id="ruleMinRolls" type="number" min="0" max="64" step="1">
+          </label>
+          <label class="row">
+            <span>Макс. роллов</span>
+            <input id="ruleMaxRolls" type="number" min="0" max="64" step="1">
+          </label>
+          <label class="row">
+            <span>Макс. стаков (0 = без лимита)</span>
+            <input id="ruleMaxStacks" type="number" min="0" step="1">
+          </label>
+        </div>
+
+        <h3>Предметы</h3>
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th>Shortname</th>
+              <th>Название RU/EN</th>
+              <th>Мин</th>
+              <th>Макс</th>
+              <th>Шанс</th>
+              <th>Вес</th>
+              <th>Skin</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="itemsBody"></tbody>
+        </table>
+
+        <div class="add-item-box">
+          <h4>Добавить предмет</h4>
+          <div class="grid4">
+            <label class="row">
+              <span>Shortname предмета</span>
+              <input id="addItemShortname" type="text" list="itemShortnamesList" placeholder="напр. scrap">
+            </label>
+            <div id="addItemNameHint" class="hint item-name-hint"></div>
+            <label class="row">
+              <span>Мин</span>
+              <input id="addItemMin" type="number" min="1" step="1" value="1">
+            </label>
+            <label class="row">
+              <span>Макс</span>
+              <input id="addItemMax" type="number" min="1" step="1" value="10">
+            </label>
+            <label class="row">
+              <span>Шанс (0..1 или 0..100)</span>
+              <input id="addItemChance" type="number" min="0" step="0.01" value="0.5">
+            </label>
+            <label class="row">
+              <span>Вес</span>
+              <input id="addItemWeight" type="number" min="0.01" step="0.01" value="1">
+            </label>
+            <label class="row">
+              <span>Skin</span>
+              <input id="addItemSkin" type="number" min="0" step="1" value="0">
+            </label>
+            <div class="row full">
+              <button id="addItemBtn" class="btn">Добавить предмет</button>
+              <span id="itemHint" class="hint inline"></span>
+            </div>
+          </div>
+          <datalist id="itemShortnamesList"></datalist>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel output">
+      <h2>Готовый JSON</h2>
+      <textarea id="outputJson" spellcheck="false"></textarea>
+    </section>
+  </main>
+
+  <script src="./catalog-embedded.js"></script>
+  <script src="./item-names-ru.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

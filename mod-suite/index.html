@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rust Mod Suite - Хаб модов</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="hero">
+      <h1>Rust Mod Suite</h1>
+      <p>Единый центр управления для PrivilegeSystem, ContainerLootManager и двух конфигураторов.</p>
+      <p class="brand">by Shmatko</p>
+    </header>
+
+    <section class="card">
+      <h2>Конфигураторы</h2>
+      <div class="actions">
+        <a class="btn primary" href="/privilege-configurator/index.html">Открыть конфигуратор привилегий</a>
+        <a class="btn primary" href="/loot-configurator/index.html">Открыть конфигуратор лута</a>
+      </div>
+      <p class="hint">Используй кнопку "Сохранить на сервер" внутри каждого конфигуратора, чтобы записать JSON сразу в `oxide/config`.</p>
+    </section>
+
+    <section class="card">
+      <h2>Авторазвертывание</h2>
+      <div class="actions">
+        <button id="deployAllBtn" class="btn ok">Развернуть оба плагина</button>
+        <button id="deployPrivilegeBtn" class="btn">Развернуть PrivilegeSystem</button>
+        <button id="deployLootBtn" class="btn">Развернуть ContainerLootManager</button>
+      </div>
+      <p id="deployStatus" class="hint"></p>
+    </section>
+
+    <section class="card">
+      <h2>Команды автоматизации</h2>
+      <p class="hint">Установка локального стенда и цикла тестирования:</p>
+      <pre class="health">powershell -ExecutionPolicy Bypass -File C:\rust\mods\install-mod-suite.ps1</pre>
+      <p class="hint">Деплой настроенных плагинов и конфигов на production (SSH/SCP):</p>
+      <pre class="health">powershell -ExecutionPolicy Bypass -File C:\rust\mods\deploy-mod-suite-remote.ps1 -RemoteHost &lt;host&gt; -RemoteUser &lt;user&gt; -RemoteRoot &lt;serverfiles-path&gt;</pre>
+    </section>
+
+    <section class="card">
+      <h2>Статус локального API</h2>
+      <button id="refreshHealthBtn" class="btn">Обновить</button>
+      <pre id="healthBox" class="health"></pre>
+    </section>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>

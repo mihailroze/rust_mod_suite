@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Конфигуратор привилегий Rust</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="title">
+      <h1>Конфигуратор привилегий Rust</h1>
+      <p>Генерация готового <code>PrivilegeSystem.json</code> для сервера</p>
+    </div>
+    <div class="top-actions">
+      <label class="file-btn">
+        Загрузить конфиг
+        <input id="configFileInput" type="file" accept=".json,application/json">
+      </label>
+      <label class="file-btn">
+        Загрузить каталог предметов
+        <input id="catalogFileInput" type="file" accept=".json,application/json">
+      </label>
+      <button id="resetBtn" class="btn secondary">Сброс</button>
+      <button id="copyBtn" class="btn secondary">Копировать JSON</button>
+      <button id="downloadBtn" class="btn primary">Скачать JSON</button>
+      <button id="saveServerBtn" class="btn ok">Сохранить на сервер</button>
+      <span id="saveServerStatus" class="hint"></span>
+      <button id="deployPluginBtn" class="btn ok">Развернуть плагин</button>
+      <span id="deployPluginStatus" class="hint"></span>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="panel globals">
+      <h2>Общие</h2>
+      <label class="row check">
+        <input id="notifyOnConnect" type="checkbox">
+        <span>Показывать статус привилегии при входе</span>
+      </label>
+      <label class="row">
+        <span>Проверка истечения (секунды, минимум 15)</span>
+        <input id="expiryInterval" type="number" min="15" step="1">
+      </label>
+      <div class="hint">
+        Множители применяются только к игрокам с активной привилегией.
+      </div>
+      <h3>Интеграции (permissions)</h3>
+      <label class="row">
+        <span>Телепортация: permissions (через запятую)</span>
+        <input id="teleportPermissionsInput" type="text" placeholder="nteleportation.tp, nteleportation.tpr">
+      </label>
+      <label class="row">
+        <span>Дома: базовые permissions (через запятую)</span>
+        <input id="homeBasePermissionsInput" type="text" placeholder="nteleportation.home">
+      </label>
+      <label class="row">
+        <span>Дома: шаблон лимита ({0} = кол-во точек)</span>
+        <input id="homeLimitTemplateInput" type="text" placeholder="nteleportation.home.{0}">
+      </label>
+      <label class="row">
+        <span>Карманный переработчик: permissions</span>
+        <input id="pocketRecyclerPermissionsInput" type="text" placeholder="recycler.use">
+      </label>
+      <label class="row">
+        <span>Команда /remove: permissions</span>
+        <input id="removePermissionsInput" type="text" placeholder="removertool.remove">
+      </label>
+      <h3>Daily rewards</h3>
+      <label class="row check">
+        <input id="dailyEnabled" type="checkbox">
+        <span>Включено</span>
+      </label>
+      <label class="row">
+        <span>Кд daily (секунды)</span>
+        <input id="dailyCooldownSeconds" type="number" min="60" step="1">
+      </label>
+      <label class="row check">
+        <input id="dailyAllowWithoutRank" type="checkbox">
+        <span>Разрешить daily без активной привилегии</span>
+      </label>
+      <label class="row">
+        <span>Базовые предметы daily (по строкам: shortname amount)</span>
+        <textarea id="dailyItemsInput" class="compact" rows="5" placeholder="scrap 150&#10;cloth 100&#10;lowgradefuel 40"></textarea>
+      </label>
+
+      <h3>Телепорты (relay)</h3>
+      <label class="row">
+        <span>Шаблон home команды ({0}=название дома)</span>
+        <input id="homeCommandTemplateInput" type="text" placeholder="home {0}">
+      </label>
+      <label class="row">
+        <span>Команда в город</span>
+        <input id="townCommandInput" type="text" placeholder="town">
+      </label>
+      <label class="row">
+        <span>Шаблон team команды ({0}=цель)</span>
+        <input id="teamCommandTemplateInput" type="text" placeholder="tpr {0}">
+      </label>
+      <label class="row">
+        <span>Базовый кд home (сек)</span>
+        <input id="homeBaseCooldownInput" type="number" min="0" step="1">
+      </label>
+      <label class="row">
+        <span>Home activation base delay (seconds)</span>
+        <input id="homeActivationDelayInput" type="number" min="0" max="60" step="1">
+      </label>
+      <label class="row">
+        <span>Home points without privilege</span>
+        <input id="homePointsWithoutPrivilegeInput" type="number" min="0" max="20" step="1">
+      </label>
+      <label class="row">
+        <span>Remove mode duration (seconds)</span>
+        <input id="removeModeDurationInput" type="number" min="5" max="600" step="1">
+      </label>
+      <label class="row">
+        <span>Базовая скорость карманного перераба x (без привилегии)</span>
+        <input id="pocketRecyclerSpeedMultiplierInput" type="number" min="1" max="20" step="0.1">
+      </label>
+      <label class="row">
+        <span>Pocket recycler command cooldown (seconds)</span>
+        <input id="pocketRecyclerCommandCooldownInput" type="number" min="0" max="600" step="1">
+      </label>
+      <label class="row check">
+        <input id="pocketRecyclerAutoCloseInput" type="checkbox">
+        <span>Автозакрытие перераба при закрытии меню</span>
+      </label>
+      <label class="row check">
+        <input id="pocketRecyclerLocalSoundsInput" type="checkbox">
+        <span>Локальные звуки перераба (только игроку)</span>
+      </label>
+      <label class="row">
+        <span>Эффект/звук открытия перераба (prefab path)</span>
+        <input id="pocketRecyclerOpenSoundInput" type="text" placeholder="assets/bundled/prefabs/fx/notice/item.select.fx.prefab">
+      </label>
+      <label class="row">
+        <span>Эффект/звук закрытия перераба (prefab path)</span>
+        <input id="pocketRecyclerCloseSoundInput" type="text" placeholder="assets/prefabs/locks/keypad/effects/lock.code.updated.prefab">
+      </label>
+      <label class="row">
+        <span>Эффект/звук работы перераба (prefab path)</span>
+        <input id="pocketRecyclerWorkingSoundInput" type="text" placeholder="assets/bundled/prefabs/fx/notice/item.select.fx.prefab">
+      </label>
+      <label class="row">
+        <span>Интервал звука работы перераба (сек)</span>
+        <input id="pocketRecyclerWorkingSoundIntervalInput" type="number" min="0.1" max="10" step="0.1">
+      </label>
+      <label class="row">
+        <span>Базовый кд team (сек)</span>
+        <input id="teamBaseCooldownInput" type="number" min="0" step="1">
+      </label>
+      <label class="row">
+        <span>Базовый лимит town в день</span>
+        <input id="townBaseLimitInput" type="number" min="0" step="1">
+      </label>
+      <label class="row check">
+        <input id="tpDebugRepliesInput" type="checkbox">
+        <span>Debug ответы relay-команд</span>
+      </label>
+
+      <h3>Пакеты привилегий</h3>
+      <label class="row check">
+        <input id="shopEnabledInput" type="checkbox">
+        <span>Включено</span>
+      </label>
+      <label class="row">
+        <span>Валюта</span>
+        <select id="shopCurrencyInput">
+          <option value="economics">economics</option>
+          <option value="serverrewards">serverrewards</option>
+        </select>
+      </label>
+      <label class="row">
+        <span>Пакеты (key|name|rank|days|eco|rp)</span>
+        <textarea id="shopPackagesInput" class="compact" rows="5" placeholder="vip_30d|VIP 30d|vip|30|500|500"></textarea>
+      </label>
+
+      <h3>Аудит</h3>
+      <label class="row check">
+        <input id="auditEnabledInput" type="checkbox">
+        <span>Включено</span>
+      </label>
+      <label class="row">
+        <span>Макс. записей</span>
+        <input id="auditMaxEntriesInput" type="number" min="50" step="1">
+      </label>
+      <label class="row check">
+        <input id="auditEchoToConsoleInput" type="checkbox">
+        <span>Дублировать в консоль</span>
+      </label>
+
+      <h3>External bridge</h3>
+      <label class="row check">
+        <input id="webShopEnabledInput" type="checkbox">
+        <span>Включено</span>
+      </label>
+      <label class="row">
+        <span>API base URL</span>
+        <input id="webShopApiBaseUrlInput" type="text" placeholder="http://127.0.0.1:8001/api/v1">
+      </label>
+      <label class="row">
+        <span>Server ID</span>
+        <input id="webShopServerIdInput" type="text" placeholder="local-rust-1">
+      </label>
+      <label class="row">
+        <span>Server key</span>
+        <input id="webShopServerKeyInput" type="text" placeholder="change-me-server-key">
+      </label>
+      <label class="row">
+        <span>Poll interval (seconds)</span>
+        <input id="webShopPollIntervalInput" type="number" min="2" max="300" step="1">
+      </label>
+      <label class="row">
+        <span>Batch size</span>
+        <input id="webShopBatchSizeInput" type="number" min="1" max="100" step="1">
+      </label>
+      <label class="row">
+        <span>Request timeout (seconds)</span>
+        <input id="webShopRequestTimeoutInput" type="number" min="3" max="60" step="1">
+      </label>
+      <label class="row">
+        <span>Grant source label</span>
+        <input id="webShopGrantSourceInput" type="text" placeholder="Bridge">
+      </label>
+      <div id="catalogInfo" class="hint">Каталог предметов: не загружен</div>
+    </section>
+
+    <section class="panel ranks">
+      <h2>Ранги</h2>
+      <div class="row">
+        <input id="rankSearch" type="text" placeholder="Поиск ранга (ключ)">
+      </div>
+      <div class="row">
+        <input id="newRankKey" type="text" placeholder="Новый ранг, напр. sponsor">
+        <button id="addRankBtn" class="btn">Добавить</button>
+      </div>
+      <div id="ranksList" class="ranks-list"></div>
+    </section>
+
+    <section class="panel editor">
+      <h2>Редактор ранга</h2>
+      <div id="noRankState" class="hint">Выберите или создайте ранг.</div>
+      <div id="rankEditor" class="hidden">
+        <div class="grid2">
+          <label class="row">
+            <span>Ключ ранга (например vip)</span>
+            <input id="rankKeyInput" type="text">
+          </label>
+          <div class="row inline-actions">
+            <button id="renameRankBtn" class="btn">Переименовать</button>
+            <button id="deleteRankBtn" class="btn danger">Удалить ранг</button>
+          </div>
+        </div>
+
+        <div class="grid4">
+          <label class="row">
+            <span>Отображаемое имя ранга (Display name)</span>
+            <input id="displayName" type="text" placeholder="VIP">
+          </label>
+          <label class="row">
+            <span>Префикс в чате (Chat tag)</span>
+            <input id="chatTag" type="text" placeholder="[VIP]">
+          </label>
+          <label class="row">
+            <span>Цвет чата (hex, например #f4c542)</span>
+            <input id="chatColor" type="text" placeholder="#f4c542">
+          </label>
+          <label class="row">
+            <span>Oxide группа (необязательно)</span>
+            <input id="oxideGroup" type="text" placeholder="vip">
+          </label>
+        </div>
+
+        <div class="grid4">
+          <label class="row">
+            <span>Добыча с нод x (Node Gather)</span>
+            <input id="gatherMultiplier" type="number" min="1" max="10" step="0.1">
+          </label>
+          <label class="row">
+            <span>Подбор с земли x (Ground Gather)</span>
+            <input id="groundMultiplier" type="number" min="1" max="10" step="0.1">
+          </label>
+          <label class="row">
+            <span>Лут контейнеров x (Container Loot)</span>
+            <input id="containerMultiplier" type="number" min="1" max="10" step="0.1">
+          </label>
+          <label class="row">
+            <span>Награда за NPC (scrap)</span>
+            <input id="npcScrapReward" type="number" min="0" step="1">
+          </label>
+          <label class="row">
+            <span>Кд rank kit (секунды)</span>
+            <input id="kitCooldownSeconds" type="number" min="0" step="1">
+          </label>
+          <label class="row">
+            <span>Множитель количества rank kit x</span>
+            <input id="kitAmountMultiplier" type="number" min="1" max="20" step="0.1">
+          </label>
+        </div>
+
+        <h3>Фичи ранга</h3>
+        <div class="grid4">
+          <label class="row check">
+            <input id="allowTeleport" type="checkbox">
+            <span>Телепортация</span>
+          </label>
+          <label class="row">
+            <span>Точки дома (Home points)</span>
+            <input id="homePoints" type="number" min="0" max="100" step="1">
+          </label>
+          <label class="row check">
+            <input id="allowPocketRecycler" type="checkbox">
+            <span>Карманный переработчик</span>
+          </label>
+          <label class="row">
+            <span>Скорость карманного перераба для ранга x</span>
+            <input id="pocketRecyclerRankSpeedMultiplier" type="number" min="1" max="20" step="0.1">
+          </label>
+          <label class="row">
+            <span>Рейт карманного перераба для ранга x</span>
+            <input id="pocketRecyclerRankOutputMultiplier" type="number" min="1" max="20" step="0.1">
+          </label>
+          <label class="row check">
+            <input id="allowRemoveCommand" type="checkbox">
+            <span>Команда /remove</span>
+          </label>
+          <label class="row">
+            <span>Daily множитель (Daily reward multiplier)</span>
+            <input id="dailyRewardMultiplier" type="number" min="0.1" max="20" step="0.1">
+          </label>
+          <label class="row">
+            <span>Снижение кд home TP (сек)</span>
+            <input id="homeTpCooldownReduction" type="number" min="0" max="600" step="1">
+          </label>
+          <label class="row">
+            <span>Снижение кд team TP (сек)</span>
+            <input id="teamTpCooldownReduction" type="number" min="0" max="600" step="1">
+          </label>
+          <label class="row">
+            <span>Бонус лимита town TP в день</span>
+            <input id="townTpDailyLimitBonus" type="number" min="0" max="1000" step="1">
+          </label>
+        </div>
+        <div class="hint">
+          Эти фичи выдают permissions автоматически по шаблонам в блоке «Интеграции».
+        </div>
+
+        <h3>Дополнительные permissions</h3>
+        <table class="simple-table">
+          <thead>
+            <tr>
+              <th>Permission</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="permissionsBody"></tbody>
+        </table>
+        <div class="row inline-actions">
+          <input id="newPermission" type="text" placeholder="например privilegesystem.rank.vip или kits.vip">
+          <button id="addPermissionBtn" class="btn">Добавить permission</button>
+        </div>
+
+        <h3>Предметы rank kit</h3>
+        <table class="simple-table">
+          <thead>
+            <tr>
+              <th>Shortname</th>
+              <th>Название RU/EN</th>
+              <th>Количество</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="kitItemsBody"></tbody>
+        </table>
+
+        <div class="add-kit-box">
+          <h4>Добавить предмет в rank kit</h4>
+          <div class="grid4">
+            <label class="row">
+              <span>Shortname</span>
+              <input id="addKitShortname" type="text" list="itemShortnamesList" placeholder="например scrap">
+            </label>
+            <div id="kitItemHint" class="hint item-name-hint"></div>
+            <label class="row">
+              <span>Amount</span>
+              <input id="addKitAmount" type="number" min="1" step="1" value="100">
+            </label>
+            <div class="row full">
+              <button id="addKitItemBtn" class="btn">Добавить в kit</button>
+            </div>
+          </div>
+          <datalist id="itemShortnamesList"></datalist>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel output">
+      <h2>Готовый JSON</h2>
+      <textarea id="outputJson" spellcheck="false"></textarea>
+    </section>
+  </main>
+
+  <script src="../loot-configurator/catalog-embedded.js"></script>
+  <script src="../loot-configurator/item-names-ru.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
