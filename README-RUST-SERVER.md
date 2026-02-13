@@ -1,23 +1,23 @@
-﻿# Rust test server (small map) for mods
+﻿# Rust тестовый сервер (маленькая карта) для модов
 
-## What was prepared
+## Что уже подготовлено
 
 - `C:\rust\steamcmd` - SteamCMD
-- `C:\rust\server` - RustDedicated server files
-- `C:\rust\mods\oxide-rust.zip` - downloaded Oxide archive
-- `C:\rust\scripts\setup-rust-test-server.ps1` - full setup script
-- `C:\rust\scripts\update-rust-server.ps1` - server update script
-- `C:\rust\scripts\install-oxide.ps1` - Oxide install/update script
-- `C:\rust\scripts\start-test-server.ps1` - start script (small map)
-- `C:\rust\scripts\stop-test-server.ps1` - stop running server
+- `C:\rust\server` - файлы сервера RustDedicated
+- `C:\rust\mods\oxide-rust.zip` - скачанный архив Oxide
+- `C:\rust\scripts\setup-rust-test-server.ps1` - полный скрипт подготовки сервера
+- `C:\rust\scripts\update-rust-server.ps1` - скрипт обновления сервера
+- `C:\rust\scripts\install-oxide.ps1` - скрипт установки/обновления Oxide
+- `C:\rust\scripts\start-test-server.ps1` - скрипт запуска (маленькая карта)
+- `C:\rust\scripts\stop-test-server.ps1` - скрипт остановки сервера
 
-## First start
+## Первый запуск
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File C:\rust\scripts\start-test-server.ps1
 ```
 
-## Start with custom settings example
+## Пример запуска с кастомными настройками
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File C:\rust\scripts\start-test-server.ps1 `
@@ -29,108 +29,107 @@ powershell -ExecutionPolicy Bypass -File C:\rust\scripts\start-test-server.ps1 `
   -Insecure
 ```
 
-## Update server after Rust patch
+## Обновить сервер после патча Rust
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File C:\rust\scripts\update-rust-server.ps1
 ```
 
-## Reinstall/update Oxide
+## Переустановить/обновить Oxide
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File C:\rust\scripts\install-oxide.ps1
 ```
 
-## Stop server
+## Остановить сервер
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File C:\rust\scripts\stop-test-server.ps1
 ```
 
-## One-command full setup (if needed)
+## Полная подготовка одной командой (если нужно)
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File C:\rust\scripts\setup-rust-test-server.ps1
 ```
 
-## Notes
+## Примечания
 
-- Small test map is set with `-WorldSize 1000`.
-- Server data is saved to `C:\rust\server\server\modtest`.
-- Default ports: game `28015`, RCON `28016`.
-- If you test only locally and have EAC problems, run with `-Insecure`.
+- Маленькая тестовая карта задается через `-WorldSize 1000`.
+- Данные сервера сохраняются в `C:\rust\server\server\modtest`.
+- Порты по умолчанию: игровой `28015`, RCON `28016`.
+- Если тестируешь только локально и есть проблемы с EAC, используй `-Insecure`.
 
-## Container loot plugin
+## Плагин лута контейнеров
 
-- Source: `C:\rust\mods\container-loot-manager\ContainerLootManager.cs`
-- Config: `C:\rust\server\oxide\config\ContainerLootManager.json`
-- In-game admin command: `/lootcfg help`
-- Visual editor: `/lootui`
-- Export loot catalog: `/lootcfg exportcatalog` -> `C:\rust\server\oxide\data\ContainerLootCatalog.json`
+- Исходник: `C:\rust\mods\container-loot-manager\ContainerLootManager.cs`
+- Конфиг: `C:\rust\server\oxide\config\ContainerLootManager.json`
+- Админ-команда в игре: `/lootcfg help`
+- Визуальный редактор: `/lootui`
+- Экспорт каталога лута: `/lootcfg exportcatalog` -> `C:\rust\server\oxide\data\ContainerLootCatalog.json`
 
-Deploy:
+Деплой:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File C:\rust\mods\container-loot-manager\scripts\deploy.ps1
 ```
 
-## Separate loot configurator utility
+## Отдельный конфигуратор лута
 
-- Folder: `C:\rust\mods\loot-configurator`
-- Start: `powershell -ExecutionPolicy Bypass -File C:\rust\mods\loot-configurator\open-configurator.ps1`
-- Utility output: `ContainerLootManager.json` (скачать из UI)
-- В утилите уже встроены все контейнеры и весь лут (экспорт с сервера).
-- Контейнеры при старте утилиты уже заполнены текущим спавнящимся лутом (Observed rules из каталога).
+- Папка: `C:\rust\mods\loot-configurator`
+- Запуск: `powershell -ExecutionPolicy Bypass -File C:\rust\mods\loot-configurator\open-configurator.ps1`
+- Результат утилиты: `ContainerLootManager.json` (скачивается из UI)
+- В утилиту уже встроены все контейнеры и весь лут (экспорт с сервера).
+- Контейнеры при старте уже заполнены текущим спавнящимся лутом (Observed rules из каталога).
 - Названия предметов отображаются как `RU / EN`.
-- Обновить встроенный каталог:
-  - `/lootcfg exportcatalog` на сервере
-  - `powershell -ExecutionPolicy Bypass -File C:\rust\mods\loot-configurator\sync-catalog-from-server.ps1`
-- Обновить словарь русских названий после апдейта каталога:
+- Обновление встроенного каталога:
+  - Выполнить `/lootcfg exportcatalog` на сервере
+  - Запустить `powershell -ExecutionPolicy Bypass -File C:\rust\mods\loot-configurator\sync-catalog-from-server.ps1`
+- Обновление словаря русских названий после апдейта каталога:
   - `powershell -ExecutionPolicy Bypass -File C:\rust\mods\loot-configurator\generate-ru-item-names.ps1`
 
-## Privilege plugin
+## Плагин привилегий
 
-- Source: `C:\rust\mods\privilege-system\PrivilegeSystem.cs`
-- Config: `C:\rust\server\oxide\config\PrivilegeSystem.json`
-- In-game admin UI: `/privui`
-- Player status: `/vip` or `/priv my`
-- Rank kit claim: `/rankkit`
-- Daily reward: `/daily`
-- Built-in utilities by rank: `/remove [off]` (enable only with hammer in hands), `/recycler [off]` (personal recycler UI-only, no model in front, faster than default recycler, command cooldown configurable)
-- Built-in teleports: `/sethome <name>`, `/home <name>`, `/homes`, `/removehome <name>`, `/hometp <home>`, `/towntp`, `/teamtp <teammate>`, `/priv settown` (home can be set only on your own foundation/floor with your sleeping bag/bed on that block)
-- Audit view (admin): `/priv audit [count]`
+- Исходник: `C:\rust\mods\privilege-system\PrivilegeSystem.cs`
+- Конфиг: `C:\rust\server\oxide\config\PrivilegeSystem.json`
+- Админ-UI в игре: `/privui`
+- Статус игрока: `/vip` или `/priv my`
+- Получение rank kit: `/rankkit`
+- Daily-награда: `/daily`
+- Встроенные утилиты по рангу: `/remove [off]` (включается только с киянкой в руке), `/recycler [off]` (личный переработчик только через UI, без модели перед игроком, быстрее обычного, кд команды настраивается)
+- Встроенные телепорты: `/sethome <name>`, `/home <name>`, `/homes`, `/removehome <name>`, `/hometp <home>`, `/towntp`, `/teamtp <teammate>`, `/priv settown` (home можно ставить только на своем фундаменте/полу, где есть твой спальник или полотенце)
+- Просмотр аудита (админ): `/priv audit [count]`
 
-Deploy:
+Деплой:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File C:\rust\mods\privilege-system\scripts\deploy.ps1
 ```
 
-## Separate privilege configurator utility
+## Отдельный конфигуратор привилегий
 
-- Folder: `C:\rust\mods\privilege-configurator`
-- Start: `powershell -ExecutionPolicy Bypass -File C:\rust\mods\privilege-configurator\open-configurator.ps1`
-- Utility output: `PrivilegeSystem.json` (скачать из UI)
+- Папка: `C:\rust\mods\privilege-configurator`
+- Запуск: `powershell -ExecutionPolicy Bypass -File C:\rust\mods\privilege-configurator\open-configurator.ps1`
+- Результат утилиты: `PrivilegeSystem.json` (скачивается из UI)
 - Настраиваются ранги, permissions, множители, rank kit, daily/tp/audit.
 - Для подсказок предметов используется каталог из `loot-configurator`.
 
-## Unified Mod Suite (recommended)
+## Unified Mod Suite (рекомендуется)
 
-- One launcher for both configurators + one-click plugin deploy:
+- Единый запускатор двух конфигураторов + деплой плагинов в один клик:
   - `powershell -ExecutionPolicy Bypass -File C:\rust\mods\open-mod-suite.ps1`
-- Hub URL:
+- URL хаба:
   - `http://127.0.0.1:18765/mod-suite/index.html`
-- One-command deploy (both plugins):
+- Деплой сразу двух плагинов:
   - `powershell -ExecutionPolicy Bypass -File C:\rust\mods\deploy-mod-suite.ps1`
-- Full installation/operations guide:
+- Полный гайд по установке и эксплуатации:
   - `C:\rust\mods\MOD-SUITE-GUIDE.md`
 
-## Auto install + production deploy (by Shmatko)
+## Автоустановка + production deploy (by Shmatko)
 
-- Full local auto-install (server + oxide + plugins + suite):
+- Полная локальная автоустановка (сервер + oxide + плагины + suite):
   - `powershell -ExecutionPolicy Bypass -File C:\rust\mods\install-mod-suite.ps1`
-- Local verification:
+- Локальная проверка:
   - `powershell -ExecutionPolicy Bypass -File C:\rust\mods\verify-local-mod-suite.ps1`
-- Production upload via SSH/SCP:
+- Загрузка на production по SSH/SCP:
   - `powershell -ExecutionPolicy Bypass -File C:\rust\mods\deploy-mod-suite-remote.ps1 -RemoteHost <host> -RemoteUser <user> -RemoteRoot <path>`
-
