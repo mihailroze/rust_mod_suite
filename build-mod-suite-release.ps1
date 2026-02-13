@@ -44,7 +44,7 @@ if (Test-Path -Path $ScriptsRoot) {
     Copy-Item -Path (Join-Path -Path $ScriptsRoot -ChildPath "*.ps1") -Destination $serverScriptsTarget -Force
 }
 else {
-    Write-Warning "Scripts root not found, skipping server scripts: $ScriptsRoot"
+    Write-Warning "Scripts root not found: $ScriptsRoot. Release will be built without server-scripts. To include bundled scripts, pass -ScriptsRoot C:\rust\mods\server-scripts"
 }
 
 $rootFiles = @(
@@ -55,7 +55,6 @@ $rootFiles = @(
     "verify-local-mod-suite.ps1",
     "MOD-SUITE-GUIDE.md",
     "README-MOD-SUITE-RU.md",
-    "FORUM-ANNOUNCE-RU.md",
     "README-RUST-SERVER.md"
 )
 

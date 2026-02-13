@@ -63,7 +63,6 @@ oxide.reload PrivilegeSystem
 - Полный гайд: `MOD-SUITE-GUIDE.md`
 - Русский README пакета: `README-MOD-SUITE-RU.md`
 - Краткая серверная сводка: `README-RUST-SERVER.md`
-- Готовый текст анонса: `FORUM-ANNOUNCE-RU.md`
 
 ## Авторство
 

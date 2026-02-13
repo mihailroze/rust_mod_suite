@@ -11,6 +11,16 @@
 - `C:\rust\scripts\start-test-server.ps1` - скрипт запуска (маленькая карта)
 - `C:\rust\scripts\stop-test-server.ps1` - скрипт остановки сервера
 
+## Где лежат server-scripts
+
+- Основной путь (по умолчанию): `C:\rust\scripts\*.ps1`
+- Копия в репозитории/релизе: `C:\rust\mods\server-scripts\*.ps1`
+
+Эквивалентные примеры:
+
+- обычный путь: `powershell -ExecutionPolicy Bypass -File C:\rust\scripts\start-test-server.ps1`
+- путь из репозитория: `powershell -ExecutionPolicy Bypass -File C:\rust\mods\server-scripts\start-test-server.ps1`
+
 ## Первый запуск
 
 ```powershell

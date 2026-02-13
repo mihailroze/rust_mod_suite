@@ -106,7 +106,6 @@ powershell -ExecutionPolicy Bypass -File C:\rust\mods\deploy-mod-suite-remote.ps
 
 - Основной пошаговый гайд: `MOD-SUITE-GUIDE.md`
 - Краткая серверная сводка: `README-RUST-SERVER.md`
-- Форумный анонс (готовый текст): `FORUM-ANNOUNCE-RU.md`
 
 ## Авторство
 

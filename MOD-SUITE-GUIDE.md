@@ -22,6 +22,13 @@
 - `deploy-mod-suite-remote.ps1` (деплой на реальный сервер по SSH/SCP)
 - `build-mod-suite-release.ps1` (сборка release zip)
 
+### Важно: пути server-scripts
+
+- Базовый рабочий путь скриптов локального сервера: `C:\rust\scripts\*.ps1`
+- Копия этих скриптов в репозитории/релизе: `C:\rust\mods\server-scripts\*.ps1`
+- `install-mod-suite.ps1` по умолчанию ищет `C:\rust\scripts`, а если путь отсутствует, автоматически переключается на `C:\rust\mods\server-scripts`.
+- `build-mod-suite-release.ps1` по умолчанию берет скрипты из `C:\rust\scripts` и при отсутствии пути просто собирает релиз без `server-scripts` (это не ошибка, а предупреждение).
+
 ## 2) Требования
 
 - Windows + PowerShell 5+/7+
@@ -39,7 +46,7 @@ powershell -ExecutionPolicy Bypass -File C:\rust\mods\install-mod-suite.ps1
 ```
 
 Что делает скрипт:
-1. Ставит/обновляет локальный Rust тест-сервер (`C:\rust\server`) через `C:\rust\scripts\setup-rust-test-server.ps1`.
+1. Ставит/обновляет локальный Rust тест-сервер (`C:\rust\server`) через `setup-rust-test-server.ps1` из `C:\rust\scripts` (или из `C:\rust\mods\server-scripts`, если первого пути нет).
 2. Ставит Oxide.
 3. Копирует плагины в локальный сервер.
 4. Поднимает локальный сервер (если не запущен).
@@ -162,6 +169,12 @@ oxide.reload PrivilegeSystem
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File C:\rust\mods\build-mod-suite-release.ps1
+```
+
+Если нужно явно брать скрипты из репозитория:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File C:\rust\mods\build-mod-suite-release.ps1 -ScriptsRoot C:\rust\mods\server-scripts
 ```
 
 Результат:
