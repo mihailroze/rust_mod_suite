@@ -197,8 +197,30 @@ textarea {
   color: var(--text);
   border-radius: 6px;
   text-align: left;
-  padding: 8px;
+  padding: 6px 8px;
   cursor: pointer;
+}
+
+.rule-btn-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rule-icon {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  object-fit: cover;
+  background: #0f151d;
+}
+
+.rule-btn-label {
+  display: block;
+  line-height: 1.25;
+  word-break: break-word;
 }
 
 .rule-btn.selected {

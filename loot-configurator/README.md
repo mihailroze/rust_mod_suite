@@ -10,6 +10,7 @@
 - Генерация готового `ContainerLootManager.json`.
 - В конфиг автоматически добавляются правила для всех контейнеров.
 - Если в каталоге есть `Observed rules`, контейнеры сразу заполняются лутом, который уже спавнился на сервере.
+- Иконки контейнеров в списке правил (чтобы было видно тип крейта/контейнера).
 
 ## Запуск
 
@@ -35,6 +36,16 @@ powershell -ExecutionPolicy Bypass -File C:\rust\mods\loot-configurator\sync-cat
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File C:\rust\mods\loot-configurator\generate-ru-item-names.ps1
+```
+
+## Иконки контейнеров (крейтов)
+
+- Иконки хранятся в:
+  - `C:\rust\mods\loot-configurator\assets\container-icons`
+- Обновить/скачать набор иконок:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File C:\rust\mods\loot-configurator\sync-container-icons.ps1
 ```
 
 ## Рабочий процесс

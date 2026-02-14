@@ -14,6 +14,7 @@
   };
   const SERVER_SAVE_ENDPOINT = "/api/save-config";
   const SERVER_DEPLOY_ENDPOINT = "/api/deploy-plugin";
+  const CONTAINER_ICON_BASE = "./assets/container-icons/";
 
   const els = {
     configFileInput: document.getElementById("configFileInput"),
@@ -690,7 +691,30 @@
       const sampleCount = state.catalog && state.catalog.observedSampleCount
         ? (state.catalog.observedSampleCount[key] || 0)
         : 0;
-      btn.textContent = `${key} | ${enabled} | предметов: ${itemCount} | образцов: ${sampleCount}`;
+      btn.title = key;
+
+      const row = document.createElement("div");
+      row.className = "rule-btn-row";
+
+      const icon = document.createElement("img");
+      icon.className = "rule-icon";
+      icon.alt = key;
+      icon.loading = "lazy";
+      icon.decoding = "async";
+      icon.src = CONTAINER_ICON_BASE + getContainerIconFile(key);
+      icon.addEventListener("error", () => {
+        if (icon.dataset.fallbackApplied === "1") return;
+        icon.dataset.fallbackApplied = "1";
+        icon.src = CONTAINER_ICON_BASE + "crate.png";
+      });
+
+      const label = document.createElement("span");
+      label.className = "rule-btn-label";
+      label.textContent = `${key} | ${enabled} | предметов: ${itemCount} | образцов: ${sampleCount}`;
+
+      row.appendChild(icon);
+      row.appendChild(label);
+      btn.appendChild(row);
       btn.addEventListener("click", () => {
         state.selectedRuleKey = key;
         renderRuleEditor();
@@ -698,6 +722,29 @@
       });
       els.rulesList.appendChild(btn);
     }
+  }
+
+  function getContainerIconFile(containerKey) {
+    const key = normalizeKey(containerKey);
+    if (!key) return "crate.png";
+
+    if (key.includes("codelockedhackablecrate")) return "bradley-crate.png";
+    if (key.includes("supply_drop")) return "supply-drop.png";
+    if (key.includes("oil_barrel")) return "oil-barrel.png";
+    if (key.includes("loot-barrel") || key.includes("loot_barrel")) return "barrel.png";
+    if (key.includes("roadsign")) return "roadsign.png";
+    if (key.includes("vehicle_parts")) return "vehicle-parts.png";
+
+    if (key === "foodbox") return "foodbox.png";
+    if (key.includes("crate_food")) return "food-crate.png";
+    if (key.includes("crate_medical")) return "medical-crate.png";
+    if (key.includes("crate_tools")) return "tool-crate.png";
+    if (key.includes("crate_cannons") || key.includes("crate_ammunition")) return "military-crate.png";
+    if (key.includes("crate_elite")) return "elite-crate.png";
+
+    if (key.includes("crate")) return "crate.png";
+    if (key.includes("barrel")) return "barrel.png";
+    return "crate.png";
   }
 
   function renderRuleEditor() {
