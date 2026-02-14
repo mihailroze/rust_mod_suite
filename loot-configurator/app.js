@@ -52,6 +52,7 @@
     ruleOverride: document.getElementById("ruleOverride"),
     ruleDuplicates: document.getElementById("ruleDuplicates"),
     ruleForceOne: document.getElementById("ruleForceOne"),
+    ruleDisablePrivilegeLootBonus: document.getElementById("ruleDisablePrivilegeLootBonus"),
     ruleMinRolls: document.getElementById("ruleMinRolls"),
     ruleMaxRolls: document.getElementById("ruleMaxRolls"),
     ruleMaxStacks: document.getElementById("ruleMaxStacks"),
@@ -93,6 +94,7 @@
       "Max rolls": 4,
       "Allow duplicate rolls": true,
       "Force at least one item": true,
+      "Disable privilege loot bonus": false,
       "Max stacks in container (0 = unlimited)": 0,
       "Items": []
     };
@@ -126,6 +128,9 @@
     }
     if (typeof source["Force at least one item"] === "boolean") {
       rule["Force at least one item"] = source["Force at least one item"];
+    }
+    if (typeof source["Disable privilege loot bonus"] === "boolean") {
+      rule["Disable privilege loot bonus"] = source["Disable privilege loot bonus"];
     }
 
     rule["Max stacks in container (0 = unlimited)"] = Math.max(
@@ -213,6 +218,9 @@
     els.ruleOverride.addEventListener("change", onRuleSettingsChanged);
     els.ruleDuplicates.addEventListener("change", onRuleSettingsChanged);
     els.ruleForceOne.addEventListener("change", onRuleSettingsChanged);
+    if (els.ruleDisablePrivilegeLootBonus) {
+      els.ruleDisablePrivilegeLootBonus.addEventListener("change", onRuleSettingsChanged);
+    }
     els.ruleMinRolls.addEventListener("input", onRuleSettingsChanged);
     els.ruleMaxRolls.addEventListener("input", onRuleSettingsChanged);
     els.ruleMaxStacks.addEventListener("input", onRuleSettingsChanged);
@@ -703,6 +711,9 @@
     rule["Override default loot"] = !!els.ruleOverride.checked;
     rule["Allow duplicate rolls"] = !!els.ruleDuplicates.checked;
     rule["Force at least one item"] = !!els.ruleForceOne.checked;
+    if (els.ruleDisablePrivilegeLootBonus) {
+      rule["Disable privilege loot bonus"] = !!els.ruleDisablePrivilegeLootBonus.checked;
+    }
     rule["Min rolls"] = clampInt(parseInt(els.ruleMinRolls.value, 10), 0, 64, 2);
     rule["Max rolls"] = clampInt(parseInt(els.ruleMaxRolls.value, 10), 0, 64, 4);
     if (rule["Max rolls"] < rule["Min rolls"]) {
@@ -1509,6 +1520,9 @@
     els.ruleOverride.checked = !!rule["Override default loot"];
     els.ruleDuplicates.checked = !!rule["Allow duplicate rolls"];
     els.ruleForceOne.checked = !!rule["Force at least one item"];
+    if (els.ruleDisablePrivilegeLootBonus) {
+      els.ruleDisablePrivilegeLootBonus.checked = !!rule["Disable privilege loot bonus"];
+    }
     els.ruleMinRolls.value = String(rule["Min rolls"]);
     els.ruleMaxRolls.value = String(rule["Max rolls"]);
     els.ruleMaxStacks.value = String(rule["Max stacks in container (0 = unlimited)"]);

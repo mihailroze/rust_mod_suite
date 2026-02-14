@@ -93,6 +93,7 @@ powershell -ExecutionPolicy Bypass -File C:\rust\mods\container-loot-manager\scr
 - В утилиту уже встроены все контейнеры и весь лут (экспорт с сервера).
 - Контейнеры при старте уже заполнены текущим спавнящимся лутом (Observed rules из каталога).
 - Названия предметов отображаются как `RU / EN`.
+- В правиле контейнера есть точечный флаг `Блокировать бонус лута привилегий` (если используется PrivilegeSystem).
 - Обновление встроенного каталога:
   - Выполнить `/lootcfg exportcatalog` на сервере
   - Запустить `powershell -ExecutionPolicy Bypass -File C:\rust\mods\loot-configurator\sync-catalog-from-server.ps1`

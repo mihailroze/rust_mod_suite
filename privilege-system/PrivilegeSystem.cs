@@ -12,7 +12,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("PrivilegeSystem", "Shmatko", "0.9.0")]
+    [Info("PrivilegeSystem", "Shmatko", "0.9.1")]
     [Description("Timed rank/privilege management for Rust servers (VIP, Premium, Elite).")]
     public class PrivilegeSystem : RustPlugin
     {
@@ -5924,6 +5924,20 @@ namespace Oxide.Plugins
             return shortPrefabName.IndexOf("barrel", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
+        // ContainerLootManager can return false via this hook for per-container blocking.
+        private bool IsContainerLootBonusBlocked(BasePlayer player, LootContainer lootContainer)
+        {
+            if (lootContainer == null) return false;
+
+            var hookResult = Interface.CallHook("CanPrivilegeContainerLootBonus", player, lootContainer);
+            if (hookResult is bool boolResult)
+            {
+                return !boolResult;
+            }
+
+            return false;
+        }
+
         private bool TryApplyBarrelLootBonus(LootContainer lootContainer, ulong attackerId, BasePlayer attackerPlayer = null)
         {
             if (lootContainer == null || lootContainer.inventory == null || lootContainer.net == null) return false;
@@ -5937,6 +5951,7 @@ namespace Oxide.Plugins
             RankDefinition rank;
             if (!TryGetActivePrivilege(attackerId, out record, out rank) || rank == null) return false;
             if (rank.ContainerLootMultiplier <= 1.01f) return false;
+            if (IsContainerLootBonusBlocked(attackerPlayer, lootContainer)) return false;
 
             var changedStacks = 0;
             var snapshot = lootContainer.inventory.itemList.ToArray();
@@ -6013,6 +6028,7 @@ namespace Oxide.Plugins
             RankDefinition rank;
             if (!TryGetActivePrivilege(player.userID, out record, out rank) || rank == null) return;
             if (rank.ContainerLootMultiplier <= 1.01f) return;
+            if (IsContainerLootBonusBlocked(player, lootContainer)) return;
 
             var containerId = lootContainer.net.ID.Value;
             HashSet<ulong> claimedUsers;
@@ -6029,6 +6045,7 @@ namespace Oxide.Plugins
             {
                 if (player == null || !player.IsConnected) return;
                 if (lootContainer == null || lootContainer.IsDestroyed || lootContainer.inventory == null || lootContainer.net == null) return;
+                if (IsContainerLootBonusBlocked(player, lootContainer)) return;
 
                 HashSet<ulong> currentClaimedUsers;
                 if (!containerLootBonusClaimed.TryGetValue(containerId, out currentClaimedUsers))

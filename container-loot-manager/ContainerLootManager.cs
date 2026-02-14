@@ -9,7 +9,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("ContainerLootManager", "Shmatko", "0.1.2")]
+    [Info("ContainerLootManager", "Shmatko", "0.1.3")]
     [Description("Per-container loot tables with custom items and spawn chance.")]
     public class ContainerLootManager : RustPlugin
     {
@@ -66,6 +66,9 @@ namespace Oxide.Plugins
 
             [JsonProperty("Max stacks in container (0 = unlimited)")]
             public int MaxStacks;
+
+            [JsonProperty("Disable privilege loot bonus")]
+            public bool DisablePrivilegeLootBonus = false;
 
             [JsonProperty("Items")]
             public List<LootItemEntry> Items = new List<LootItemEntry>();
@@ -356,6 +359,30 @@ namespace Oxide.Plugins
             }
 
             return false;
+        }
+
+        // Hook for PrivilegeSystem: return false to block rank-based loot bonus for this container.
+        private object CanPrivilegeContainerLootBonus(BasePlayer player, LootContainer container)
+        {
+            if (container == null || config == null || !config.Enabled)
+            {
+                return null;
+            }
+
+            string matchedKey;
+            ContainerRule rule;
+            var hasRule = TryFindRule(container, out matchedKey, out rule);
+            if (!hasRule || rule == null || !rule.Enabled)
+            {
+                return null;
+            }
+
+            if (rule.DisablePrivilegeLootBonus)
+            {
+                return false;
+            }
+
+            return null;
         }
 
         private void OnLootSpawn(LootContainer container)
