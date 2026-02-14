@@ -56,6 +56,7 @@
     addItemSkin: document.getElementById("addItemSkin"),
     addItemBtn: document.getElementById("addItemBtn"),
     addItemNameHint: document.getElementById("addItemNameHint"),
+    addItemSuggestions: document.getElementById("addItemSuggestions"),
     itemHint: document.getElementById("itemHint"),
     outputJson: document.getElementById("outputJson"),
     itemShortnamesList: document.getElementById("itemShortnamesList"),
@@ -198,6 +199,18 @@
     els.addItemShortname.addEventListener("input", onAddItemShortnameChanged);
     els.addItemShortname.addEventListener("change", onAddItemShortnameChanged);
     els.addItemBtn.addEventListener("click", onAddItemClicked);
+
+    const quickAddInputs = [
+      els.addItemShortname,
+      els.addItemMin,
+      els.addItemMax,
+      els.addItemChance,
+      els.addItemWeight,
+      els.addItemSkin
+    ];
+    for (const input of quickAddInputs) {
+      input.addEventListener("keydown", onQuickAddKeyDown);
+    }
   }
 
   function onConfigFileChosen(event) {
@@ -489,6 +502,13 @@
 
   function onAddItemShortnameChanged() {
     renderAddItemNameHint();
+    renderAddItemSuggestions();
+  }
+
+  function onQuickAddKeyDown(event) {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    onAddItemClicked();
   }
 
   function onAddItemClicked() {
@@ -516,9 +536,12 @@
     });
 
     els.itemHint.textContent = "";
+    els.addItemShortname.value = "";
     renderAddItemNameHint();
+    renderAddItemSuggestions();
     renderRuleEditor();
     renderOutput();
+    els.addItemShortname.focus();
   }
 
   function onItemCellChanged(index, field, value) {
@@ -622,6 +645,60 @@
     els.addItemNameHint.textContent = `${getItemLabel(shortname)}${categoryPart}`;
   }
 
+  function getItemSearchScore(item, query) {
+    const q = normalizeKey(query);
+    if (!q) return 0;
+
+    const shortname = normalizeKey(item.shortname);
+    const en = normalizeKey(item.displayName);
+    const ru = normalizeKey(item.displayNameRu);
+    const category = normalizeKey(item.category);
+
+    if (shortname === q) return 1000;
+    if (shortname.startsWith(q)) return 800;
+    if (shortname.includes(q)) return 700;
+    if (ru && ru.startsWith(q)) return 600;
+    if (ru && ru.includes(q)) return 500;
+    if (en && en.startsWith(q)) return 450;
+    if (en && en.includes(q)) return 400;
+    if (category && category.includes(q)) return 250;
+    return 0;
+  }
+
+  function renderAddItemSuggestions() {
+    if (!els.addItemSuggestions) return;
+    const query = normalizeKey(els.addItemShortname.value);
+    els.addItemSuggestions.innerHTML = "";
+    if (!query) return;
+
+    const matches = [];
+    for (const item of state.catalog.items) {
+      const score = getItemSearchScore(item, query);
+      if (score <= 0) continue;
+      matches.push({ item, score });
+    }
+
+    matches.sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return a.item.shortname.localeCompare(b.item.shortname);
+    });
+
+    const top = matches.slice(0, 12);
+    for (const entry of top) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "suggest-btn";
+      btn.textContent = `${entry.item.shortname} - ${getItemLabel(entry.item.shortname)}`;
+      btn.addEventListener("click", () => {
+        els.addItemShortname.value = entry.item.shortname;
+        renderAddItemNameHint();
+        renderAddItemSuggestions();
+        els.addItemShortname.focus();
+      });
+      els.addItemSuggestions.appendChild(btn);
+    }
+  }
+
   function renderAll() {
     if (!state.selectedRuleKey) {
       const keys = getRuleKeys();
@@ -634,6 +711,7 @@
     renderCatalogInfo();
     rebuildItemAndContainerDatalists();
     renderAddItemNameHint();
+    renderAddItemSuggestions();
     renderRulesList();
     renderRuleEditor();
     renderOutput();

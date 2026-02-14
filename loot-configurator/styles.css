@@ -304,6 +304,36 @@ textarea {
   margin-bottom: 2px;
 }
 
+.item-suggestions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: -2px;
+  margin-bottom: 2px;
+}
+
+.item-search-help {
+  grid-column: 1 / -1;
+  margin-top: -2px;
+  margin-bottom: 4px;
+}
+
+.suggest-btn {
+  border: 1px solid var(--border);
+  background: #1b2431;
+  color: var(--text);
+  border-radius: 6px;
+  padding: 5px 8px;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.suggest-btn:hover {
+  filter: brightness(1.08);
+}
+
 .hidden {
   display: none !important;
 }
