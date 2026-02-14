@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Reflection;
 using Newtonsoft.Json;
 using Oxide.Core;
 using Oxide.Game.Rust.Cui;
@@ -19,6 +20,8 @@ namespace Oxide.Plugins
         private readonly HashSet<ulong> uiViewers = new HashSet<ulong>();
         private readonly Dictionary<ulong, string> uiSelectedRuleKey = new Dictionary<ulong, string>();
         private readonly Dictionary<ulong, int> uiSelectedItemIndex = new Dictionary<ulong, int>();
+        private MethodInfo spawnLootMethod;
+        private bool warnedMissingSpawnLootMethod;
 
         private class LootItemEntry
         {
@@ -541,6 +544,60 @@ namespace Oxide.Plugins
             return pool.Count - 1;
         }
 
+        private void ReplyTo(BasePlayer player, string message)
+        {
+            if (player != null)
+            {
+                SendReply(player, message);
+            }
+            else
+            {
+                Puts(message);
+            }
+        }
+
+        private bool TryRespawnVanillaLoot(LootContainer container)
+        {
+            if (container == null || container.inventory == null)
+            {
+                return false;
+            }
+
+            if (spawnLootMethod == null)
+            {
+                spawnLootMethod = typeof(LootContainer).GetMethod(
+                    "SpawnLoot",
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                    null,
+                    Type.EmptyTypes,
+                    null
+                );
+
+                if (spawnLootMethod == null && !warnedMissingSpawnLootMethod)
+                {
+                    warnedMissingSpawnLootMethod = true;
+                    PrintWarning("LootContainer.SpawnLoot() was not found. 'respawnall all' can only apply custom rules.");
+                }
+            }
+
+            if (spawnLootMethod == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                ClearContainer(container.inventory);
+                spawnLootMethod.Invoke(container, null);
+                container.inventory.MarkDirty();
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         private static bool TryCreateAndMoveItem(ItemContainer container, LootItemEntry entry)
         {
             if (container == null || entry == null || string.IsNullOrWhiteSpace(entry.ShortName))
@@ -916,6 +973,9 @@ namespace Oxide.Plugins
                 case "reroll":
                     CommandReroll(player);
                     return;
+                case "respawnall":
+                    CommandRespawnAll(player, args.Length >= 2 ? args[1] : null);
+                    return;
                 case "nearby":
                     CommandNearby(player, args);
                     return;
@@ -966,6 +1026,7 @@ namespace Oxide.Plugins
             SendReply(player, "/lootcfg exportcatalog - export full item/catalog file");
             SendReply(player, "/lootcfg where - info about looked container");
             SendReply(player, "/lootcfg reroll - refill looked container now");
+            SendReply(player, "/lootcfg respawnall [all|custom] - respawn loot on all map containers");
             SendReply(player, "/lootcfg nearby [radius] - nearby container keys");
             SendReply(player, "/lootcfg list - list all configured rules");
             SendReply(player, "/lootcfg show <containerKey> - show rule content");
@@ -1027,6 +1088,69 @@ namespace Oxide.Plugins
 
             OnLootSpawn(target);
             SendReply(player, $"Rerolled loot for: {target.ShortPrefabName}");
+        }
+
+        private void CommandRespawnAll(BasePlayer player, string modeArg)
+        {
+            var mode = string.IsNullOrWhiteSpace(modeArg) ? "all" : modeArg.Trim().ToLowerInvariant();
+            var includeVanillaNoRule = mode != "custom";
+            if (mode != "all" && mode != "custom")
+            {
+                ReplyTo(player, "Unknown mode. Use: /lootcfg respawnall [all|custom]");
+                return;
+            }
+
+            var total = 0;
+            var customApplied = 0;
+            var vanillaApplied = 0;
+            var clearedNoRule = 0;
+            var skippedNoRule = 0;
+            var failedVanilla = 0;
+
+            foreach (var networkable in BaseNetworkable.serverEntities)
+            {
+                var lootContainer = networkable as LootContainer;
+                if (lootContainer == null || lootContainer.IsDestroyed || lootContainer.inventory == null)
+                {
+                    continue;
+                }
+
+                total++;
+
+                string matchedKey;
+                ContainerRule rule;
+                var hasRule = TryFindRule(lootContainer, out matchedKey, out rule);
+                if (hasRule)
+                {
+                    OnLootSpawn(lootContainer);
+                    customApplied++;
+                    continue;
+                }
+
+                if (!config.UseVanillaWhenNoRule)
+                {
+                    OnLootSpawn(lootContainer);
+                    clearedNoRule++;
+                    continue;
+                }
+
+                if (!includeVanillaNoRule)
+                {
+                    skippedNoRule++;
+                    continue;
+                }
+
+                if (TryRespawnVanillaLoot(lootContainer))
+                {
+                    vanillaApplied++;
+                }
+                else
+                {
+                    failedVanilla++;
+                }
+            }
+
+            ReplyTo(player, $"Loot respawn complete ({mode}). Containers: {total}, custom: {customApplied}, vanilla: {vanillaApplied}, cleared(no-rule): {clearedNoRule}, skipped(no-rule): {skippedNoRule}, vanilla-failed: {failedVanilla}.");
         }
 
         private void CommandExportCatalog(BasePlayer player)
@@ -1646,6 +1770,24 @@ namespace Oxide.Plugins
             if (player == null || !HasAccess(player)) return;
             CommandReroll(player);
             RefreshUi(player);
+        }
+
+        [ConsoleCommand("loot.respawnall")]
+        private void LootRespawnAllConsole(ConsoleSystem.Arg arg)
+        {
+            var player = arg.Player();
+            if (player != null && !HasAccess(player))
+            {
+                SendReply(player, "No access.");
+                return;
+            }
+
+            var mode = (arg.Args != null && arg.Args.Length >= 1) ? arg.Args[0] : null;
+            CommandRespawnAll(player, mode);
+            if (player != null)
+            {
+                RefreshUi(player);
+            }
         }
 
         [ConsoleCommand("loot.catalog.export")]

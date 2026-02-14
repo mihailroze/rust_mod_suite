@@ -77,6 +77,7 @@ powershell -ExecutionPolicy Bypass -File C:\rust\scripts\setup-rust-test-server.
 - Админ-команда в игре: `/lootcfg help`
 - Визуальный редактор: `/lootui`
 - Экспорт каталога лута: `/lootcfg exportcatalog` -> `C:\rust\server\oxide\data\ContainerLootCatalog.json`
+- Массовый респавн лута по карте: `/lootcfg respawnall [all|custom]` (или в консоли сервера `loot.respawnall [all|custom]`)
 
 Деплой:
 
