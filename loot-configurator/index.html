@@ -117,7 +117,38 @@
           </label>
         </div>
 
-        <h3>Предметы</h3>
+        <h3>Визуальный редактор предметов</h3>
+        <div class="item-editor-shell">
+          <div class="item-editor-left">
+            <div class="item-editor-header">
+              <strong>Лут контейнера</strong>
+              <span id="containerItemsMeta" class="hint"></span>
+            </div>
+            <div id="containerItemsDrop" class="drop-zone">
+              Перетащи предмет из библиотеки сюда, чтобы добавить в контейнер
+            </div>
+            <div id="containerItemsList" class="container-items-list"></div>
+            <div id="containerTrashDrop" class="trash-drop">Удаление: перетащи карточку предмета сюда</div>
+          </div>
+          <div class="item-editor-right">
+            <div class="item-editor-header">
+              <strong>Библиотека предметов</strong>
+              <span id="libraryItemsCount" class="hint"></span>
+            </div>
+            <label class="row">
+              <span>Поиск по shortname / RU / EN / категории</span>
+              <input id="librarySearch" type="text" placeholder="напр. scrap, металл, weapon">
+            </label>
+            <label class="row">
+              <span>Категория</span>
+              <select id="libraryCategory"></select>
+            </label>
+            <div id="libraryCategoryBadges" class="category-badges"></div>
+            <div id="libraryItemsGrid" class="library-grid"></div>
+          </div>
+        </div>
+
+        <h3>Точные параметры (таблица)</h3>
         <table class="items-table">
           <thead>
             <tr>

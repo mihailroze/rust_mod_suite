@@ -253,6 +253,230 @@ textarea {
   gap: 6px;
 }
 
+.item-editor-shell {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.item-editor-left,
+.item-editor-right {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #111923;
+  padding: 10px;
+}
+
+.item-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.drop-zone {
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  padding: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.drop-zone.drag-active {
+  border-color: #53b8dc;
+  background: rgba(58, 143, 183, 0.14);
+  color: #d7ecf5;
+}
+
+.container-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 520px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.container-items-empty {
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.container-item-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #1a2432;
+  padding: 8px;
+  display: grid;
+  grid-template-columns: 42px 1fr auto;
+  gap: 8px;
+  align-items: start;
+  cursor: grab;
+}
+
+.container-item-card:active {
+  cursor: grabbing;
+}
+
+.container-item-card.drag-target {
+  border-color: #53b8dc;
+  background: rgba(58, 143, 183, 0.18);
+}
+
+.item-thumb {
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  object-fit: contain;
+  background: #0f151d;
+}
+
+.container-item-title {
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.container-item-shortname {
+  color: var(--muted);
+  font-size: 11px;
+  margin-top: 2px;
+  margin-bottom: 6px;
+}
+
+.container-item-fields {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(64px, 1fr));
+  gap: 6px;
+}
+
+.field-mini {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.field-mini span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.field-mini input {
+  width: 100%;
+  border: 1px solid var(--border);
+  background: #0f151d;
+  color: var(--text);
+  border-radius: 6px;
+  padding: 5px 6px;
+  font-size: 12px;
+}
+
+.container-item-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-end;
+}
+
+.trash-drop {
+  border: 1px dashed #8e4b4b;
+  border-radius: 8px;
+  background: rgba(164, 58, 58, 0.15);
+  color: #f3b9b9;
+  padding: 8px;
+  font-size: 12px;
+  text-align: center;
+  margin-top: 8px;
+}
+
+.trash-drop.drag-active {
+  border-color: #ff7b72;
+  background: rgba(164, 58, 58, 0.30);
+}
+
+.category-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.category-chip {
+  border: 1px solid var(--border);
+  background: #1b2431;
+  color: var(--text);
+  border-radius: 999px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.category-chip.active {
+  border-color: #48a16c;
+  background: #243a2e;
+}
+
+.library-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+  max-height: 560px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.library-item-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #192331;
+  padding: 7px;
+  display: grid;
+  grid-template-columns: 38px 1fr;
+  gap: 7px;
+  align-items: center;
+  cursor: grab;
+}
+
+.library-item-card:active {
+  cursor: grabbing;
+}
+
+.library-item-card.drag-target {
+  border-color: #53b8dc;
+  background: rgba(58, 143, 183, 0.18);
+}
+
+.library-item-title {
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.library-item-shortname {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.library-item-category {
+  color: #9fb0c8;
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.library-item-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+}
+
 .items-table {
   width: 100%;
   border-collapse: collapse;
@@ -353,5 +577,13 @@ textarea {
 
   .globals {
     grid-row: auto;
+  }
+
+  .item-editor-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .container-item-fields {
+    grid-template-columns: repeat(3, minmax(64px, 1fr));
   }
 }

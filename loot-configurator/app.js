@@ -10,11 +10,15 @@
     config: createDefaultConfig(),
     catalog: EMBEDDED_CATALOG,
     itemByShortname: Object.create(null),
-    selectedRuleKey: null
+    selectedRuleKey: null,
+    librarySearch: "",
+    libraryCategory: "all",
+    dragPayload: null
   };
   const SERVER_SAVE_ENDPOINT = "/api/save-config";
   const SERVER_DEPLOY_ENDPOINT = "/api/deploy-plugin";
   const CONTAINER_ICON_BASE = "./assets/container-icons/";
+  const ITEM_ICON_BASE = "https://cdn.rusthelp.com/images/public/";
 
   const els = {
     configFileInput: document.getElementById("configFileInput"),
@@ -52,6 +56,15 @@
     ruleMaxRolls: document.getElementById("ruleMaxRolls"),
     ruleMaxStacks: document.getElementById("ruleMaxStacks"),
     itemsBody: document.getElementById("itemsBody"),
+    containerItemsMeta: document.getElementById("containerItemsMeta"),
+    containerItemsDrop: document.getElementById("containerItemsDrop"),
+    containerItemsList: document.getElementById("containerItemsList"),
+    containerTrashDrop: document.getElementById("containerTrashDrop"),
+    librarySearch: document.getElementById("librarySearch"),
+    libraryCategory: document.getElementById("libraryCategory"),
+    libraryCategoryBadges: document.getElementById("libraryCategoryBadges"),
+    libraryItemsGrid: document.getElementById("libraryItemsGrid"),
+    libraryItemsCount: document.getElementById("libraryItemsCount"),
     addItemShortname: document.getElementById("addItemShortname"),
     addItemMin: document.getElementById("addItemMin"),
     addItemMax: document.getElementById("addItemMax"),
@@ -203,6 +216,12 @@
     els.ruleMinRolls.addEventListener("input", onRuleSettingsChanged);
     els.ruleMaxRolls.addEventListener("input", onRuleSettingsChanged);
     els.ruleMaxStacks.addEventListener("input", onRuleSettingsChanged);
+    if (els.librarySearch) {
+      els.librarySearch.addEventListener("input", onLibrarySearchChanged);
+    }
+    if (els.libraryCategory) {
+      els.libraryCategory.addEventListener("change", onLibraryCategoryChanged);
+    }
     els.addItemShortname.addEventListener("input", onAddItemShortnameChanged);
     els.addItemShortname.addEventListener("change", onAddItemShortnameChanged);
     els.addItemBtn.addEventListener("click", onAddItemClicked);
@@ -217,6 +236,22 @@
     ];
     for (const input of quickAddInputs) {
       input.addEventListener("keydown", onQuickAddKeyDown);
+    }
+
+    if (els.containerItemsDrop) {
+      els.containerItemsDrop.addEventListener("dragover", onContainerDropZoneDragOver);
+      els.containerItemsDrop.addEventListener("dragleave", () => {
+        els.containerItemsDrop.classList.remove("drag-active");
+      });
+      els.containerItemsDrop.addEventListener("drop", onContainerDropZoneDrop);
+    }
+
+    if (els.containerTrashDrop) {
+      els.containerTrashDrop.addEventListener("dragover", onTrashDropZoneDragOver);
+      els.containerTrashDrop.addEventListener("dragleave", () => {
+        els.containerTrashDrop.classList.remove("drag-active");
+      });
+      els.containerTrashDrop.addEventListener("drop", onTrashDropZoneDrop);
     }
   }
 
@@ -247,11 +282,7 @@
         state.catalog = normalizeCatalog(json);
         rebuildItemLookup();
         ensureAllContainerRulesPresent();
-        renderCatalogInfo();
-        rebuildItemAndContainerDatalists();
-        renderRulesList();
-        renderRuleEditor();
-        renderOutput();
+        renderAll();
       })
       .catch((err) => {
         alert("Не удалось загрузить каталог: " + err.message);
@@ -694,11 +725,20 @@
   }
 
   function onAddItemClicked() {
-    const rule = getSelectedRule();
-    if (!rule) return;
-
     const shortname = normalizeKey(els.addItemShortname.value);
     if (!shortname) return;
+    const itemTemplate = readAddItemTemplate();
+    const added = addItemToRule(shortname, null, itemTemplate);
+    if (!added) return;
+
+    els.itemHint.textContent = "";
+    els.addItemShortname.value = "";
+    renderAddItemNameHint();
+    renderAddItemSuggestions();
+    els.addItemShortname.focus();
+  }
+
+  function readAddItemTemplate() {
     const min = Math.max(1, clampInt(parseInt(els.addItemMin.value, 10), 1, 100000, 1));
     const max = Math.max(min, clampInt(parseInt(els.addItemMax.value, 10), min, 100000, min));
     let chance = parseFloat(els.addItemChance.value);
@@ -707,23 +747,72 @@
     chance = clampFloat(chance, 0, 1, 0.5);
     const weight = Math.max(0.01, clampFloat(parseFloat(els.addItemWeight.value), 0.01, 100000, 1));
     const skin = Math.max(0, clampInt(parseInt(els.addItemSkin.value, 10), 0, Number.MAX_SAFE_INTEGER, 0));
-
-    rule["Items"].push({
-      "Shortname": shortname,
+    return {
       "Min amount": min,
       "Max amount": max,
       "Chance (0-1)": chance,
       "Weight": weight,
       "Skin": skin
-    });
+    };
+  }
 
-    els.itemHint.textContent = "";
-    els.addItemShortname.value = "";
-    renderAddItemNameHint();
-    renderAddItemSuggestions();
+  function createItemEntry(shortname, template) {
+    const source = template || {};
+    const minAmount = Math.max(1, clampInt(parseInt(source["Min amount"], 10), 1, 100000, 1));
+    const maxAmount = Math.max(minAmount, clampInt(parseInt(source["Max amount"], 10), minAmount, 100000, minAmount));
+    const chance = clampFloat(parseFloat(source["Chance (0-1)"]), 0, 1, 0.5);
+    const weight = Math.max(0.01, clampFloat(parseFloat(source["Weight"]), 0.01, 100000, 1));
+    const skin = Math.max(0, clampInt(parseInt(source["Skin"], 10), 0, Number.MAX_SAFE_INTEGER, 0));
+    return {
+      "Shortname": normalizeKey(shortname),
+      "Min amount": minAmount,
+      "Max amount": maxAmount,
+      "Chance (0-1)": chance,
+      "Weight": weight,
+      "Skin": skin
+    };
+  }
+
+  function addItemToRule(shortname, insertIndex, template) {
+    const rule = getSelectedRule();
+    if (!rule) return false;
+
+    const key = normalizeKey(shortname);
+    if (!key) return false;
+
+    if (!Array.isArray(rule["Items"])) rule["Items"] = [];
+    const item = createItemEntry(key, template);
+
+    if (Number.isInteger(insertIndex)) {
+      const clampedIndex = clampInt(insertIndex, 0, rule["Items"].length, rule["Items"].length);
+      rule["Items"].splice(clampedIndex, 0, item);
+    } else {
+      rule["Items"].push(item);
+    }
+
     renderRuleEditor();
     renderOutput();
-    els.addItemShortname.focus();
+    return true;
+  }
+
+  function moveRuleItem(fromIndex, toIndex) {
+    const rule = getSelectedRule();
+    if (!rule || !Array.isArray(rule["Items"])) return false;
+    if (!Number.isInteger(fromIndex) || !Number.isInteger(toIndex)) return false;
+    if (fromIndex < 0 || fromIndex >= rule["Items"].length) return false;
+
+    let target = clampInt(toIndex, 0, rule["Items"].length, rule["Items"].length);
+    if (fromIndex === target || fromIndex + 1 === target) return false;
+
+    const moved = rule["Items"][fromIndex];
+    rule["Items"].splice(fromIndex, 1);
+    if (fromIndex < target) {
+      target -= 1;
+    }
+    rule["Items"].splice(target, 0, moved);
+    renderRuleEditor();
+    renderOutput();
+    return true;
   }
 
   function onItemCellChanged(index, field, value) {
@@ -766,10 +855,12 @@
 
   function removeItem(index) {
     const rule = getSelectedRule();
-    if (!rule) return;
+    if (!rule || !Array.isArray(rule["Items"])) return false;
+    if (!Number.isInteger(index) || index < 0 || index >= rule["Items"].length) return false;
     rule["Items"].splice(index, 1);
     renderRuleEditor();
     renderOutput();
+    return true;
   }
 
   function rebuildItemLookup() {
@@ -881,6 +972,394 @@
     }
   }
 
+  function onLibrarySearchChanged() {
+    state.librarySearch = String(els.librarySearch.value || "");
+    renderItemLibrary();
+  }
+
+  function onLibraryCategoryChanged() {
+    state.libraryCategory = normalizeKey(els.libraryCategory.value) || "all";
+    renderLibraryCategoryBadges();
+    renderItemLibrary();
+  }
+
+  function getItemCategoryLabel(item) {
+    const category = item && item.category ? String(item.category).trim() : "";
+    return category || "Без категории";
+  }
+
+  function getLibraryCategoryEntries() {
+    const byKey = Object.create(null);
+    for (const item of state.catalog.items) {
+      const label = getItemCategoryLabel(item);
+      const key = normalizeKey(label);
+      if (!key) continue;
+      if (!byKey[key]) {
+        byKey[key] = { key, label, count: 0 };
+      }
+      byKey[key].count += 1;
+    }
+    return Object.values(byKey).sort((a, b) => a.label.localeCompare(b.label, "ru"));
+  }
+
+  function renderLibraryCategoryOptions() {
+    if (!els.libraryCategory) return;
+    const entries = getLibraryCategoryEntries();
+    const current = normalizeKey(state.libraryCategory) || "all";
+    const available = new Set(entries.map((entry) => entry.key));
+    if (current !== "all" && !available.has(current)) {
+      state.libraryCategory = "all";
+    }
+
+    els.libraryCategory.innerHTML = "";
+    const allOpt = document.createElement("option");
+    allOpt.value = "all";
+    allOpt.textContent = "Все категории";
+    els.libraryCategory.appendChild(allOpt);
+    for (const entry of entries) {
+      const option = document.createElement("option");
+      option.value = entry.key;
+      option.textContent = `${entry.label} (${entry.count})`;
+      els.libraryCategory.appendChild(option);
+    }
+    els.libraryCategory.value = state.libraryCategory;
+  }
+
+  function renderLibraryCategoryBadges() {
+    if (!els.libraryCategoryBadges) return;
+    els.libraryCategoryBadges.innerHTML = "";
+
+    const entries = getLibraryCategoryEntries();
+    const makeChip = (key, label) => {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "category-chip" + (state.libraryCategory === key ? " active" : "");
+      chip.textContent = label;
+      chip.addEventListener("click", () => {
+        state.libraryCategory = key;
+        if (els.libraryCategory) {
+          els.libraryCategory.value = key;
+        }
+        renderLibraryCategoryBadges();
+        renderItemLibrary();
+      });
+      return chip;
+    };
+
+    els.libraryCategoryBadges.appendChild(makeChip("all", "Все"));
+    for (const entry of entries) {
+      els.libraryCategoryBadges.appendChild(makeChip(entry.key, entry.label));
+    }
+  }
+
+  function getFilteredLibraryItems() {
+    const query = normalizeKey(state.librarySearch || "");
+    const category = normalizeKey(state.libraryCategory || "all");
+    const filtered = [];
+    for (const item of state.catalog.items) {
+      if (category !== "all" && normalizeKey(getItemCategoryLabel(item)) !== category) {
+        continue;
+      }
+      const score = query ? getItemSearchScore(item, query) : 1;
+      if (query && score <= 0) continue;
+      filtered.push({ item, score });
+    }
+
+    filtered.sort((a, b) => {
+      if (query && b.score !== a.score) return b.score - a.score;
+      const catCmp = getItemCategoryLabel(a.item).localeCompare(getItemCategoryLabel(b.item), "ru");
+      if (catCmp !== 0) return catCmp;
+      return a.item.shortname.localeCompare(b.item.shortname);
+    });
+
+    return filtered.map((entry) => entry.item);
+  }
+
+  function renderItemLibrary() {
+    if (!els.libraryItemsGrid) return;
+    els.libraryItemsGrid.innerHTML = "";
+
+    const items = getFilteredLibraryItems();
+    if (els.libraryItemsCount) {
+      els.libraryItemsCount.textContent = `Показано: ${items.length} / ${state.catalog.items.length}`;
+    }
+
+    for (const item of items) {
+      els.libraryItemsGrid.appendChild(createLibraryItemCard(item));
+    }
+  }
+
+  function createLibraryItemCard(item) {
+    const card = document.createElement("div");
+    card.className = "library-item-card";
+    card.draggable = true;
+    card.addEventListener("dragstart", (event) => {
+      beginDrag(event, { source: "library", shortname: item.shortname });
+    });
+    card.addEventListener("dragend", clearDragPayload);
+
+    const thumb = createItemThumb(item.shortname, getItemLabel(item.shortname));
+
+    const meta = document.createElement("div");
+    const title = document.createElement("div");
+    title.className = "library-item-title";
+    title.textContent = getItemLabel(item.shortname);
+    const short = document.createElement("div");
+    short.className = "library-item-shortname";
+    short.textContent = item.shortname;
+    const category = document.createElement("div");
+    category.className = "library-item-category";
+    category.textContent = getItemCategoryLabel(item);
+    meta.appendChild(title);
+    meta.appendChild(short);
+    meta.appendChild(category);
+
+    const actions = document.createElement("div");
+    actions.className = "library-item-actions";
+    const addBtn = document.createElement("button");
+    addBtn.className = "btn small";
+    addBtn.type = "button";
+    addBtn.textContent = "Добавить";
+    addBtn.addEventListener("click", () => {
+      addItemToRule(item.shortname, null, readAddItemTemplate());
+    });
+    actions.appendChild(addBtn);
+
+    card.appendChild(thumb);
+    card.appendChild(meta);
+    card.appendChild(actions);
+    return card;
+  }
+
+  function renderContainerItemsVisual() {
+    if (!els.containerItemsList) return;
+    const rule = getSelectedRule();
+    els.containerItemsList.innerHTML = "";
+    if (els.containerItemsMeta) {
+      els.containerItemsMeta.textContent = rule && Array.isArray(rule["Items"]) ? `Предметов: ${rule["Items"].length}` : "";
+    }
+
+    if (!rule || !Array.isArray(rule["Items"])) {
+      const emptyNoRule = document.createElement("div");
+      emptyNoRule.className = "container-items-empty";
+      emptyNoRule.textContent = "Выбери правило контейнера слева.";
+      els.containerItemsList.appendChild(emptyNoRule);
+      return;
+    }
+
+    if (rule["Items"].length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "container-items-empty";
+      empty.textContent = "В контейнере пока нет предметов. Перетащи предмет из библиотеки.";
+      els.containerItemsList.appendChild(empty);
+      return;
+    }
+
+    rule["Items"].forEach((item, index) => {
+      els.containerItemsList.appendChild(createContainerItemCard(item, index));
+    });
+  }
+
+  function createContainerItemCard(item, index) {
+    const card = document.createElement("div");
+    card.className = "container-item-card";
+    card.draggable = true;
+    card.addEventListener("dragstart", (event) => {
+      beginDrag(event, { source: "container", index });
+    });
+    card.addEventListener("dragend", clearDragPayload);
+    card.addEventListener("dragover", (event) => {
+      const payload = resolveDragPayload(event);
+      if (!payload) return;
+      event.preventDefault();
+      card.classList.add("drag-target");
+      if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = payload.source === "library" ? "copy" : "move";
+      }
+    });
+    card.addEventListener("dragleave", () => {
+      card.classList.remove("drag-target");
+    });
+    card.addEventListener("drop", (event) => {
+      event.preventDefault();
+      card.classList.remove("drag-target");
+      const payload = resolveDragPayload(event);
+      if (!payload) return;
+
+      if (payload.source === "library") {
+        addItemToRule(payload.shortname, index, readAddItemTemplate());
+      } else if (payload.source === "container") {
+        moveRuleItem(payload.index, index);
+      }
+      clearDragPayload();
+    });
+
+    const thumb = createItemThumb(item["Shortname"], getItemLabel(item["Shortname"]));
+
+    const info = document.createElement("div");
+    const title = document.createElement("div");
+    title.className = "container-item-title";
+    title.textContent = getItemLabel(item["Shortname"]);
+    const short = document.createElement("div");
+    short.className = "container-item-shortname";
+    short.textContent = item["Shortname"];
+    const fields = document.createElement("div");
+    fields.className = "container-item-fields";
+    fields.appendChild(createMiniField("Мин", item["Min amount"], (v) => onItemCellChanged(index, "Min amount", v), "1", "1"));
+    fields.appendChild(createMiniField("Макс", item["Max amount"], (v) => onItemCellChanged(index, "Max amount", v), "1", "1"));
+    fields.appendChild(createMiniField("Шанс", item["Chance (0-1)"], (v) => onItemCellChanged(index, "Chance (0-1)", v), "0.01", "0"));
+    fields.appendChild(createMiniField("Вес", item["Weight"], (v) => onItemCellChanged(index, "Weight", v), "0.01", "0.01"));
+    fields.appendChild(createMiniField("Skin", item["Skin"], (v) => onItemCellChanged(index, "Skin", v), "1", "0"));
+    info.appendChild(title);
+    info.appendChild(short);
+    info.appendChild(fields);
+
+    const actions = document.createElement("div");
+    actions.className = "container-item-actions";
+    const removeBtn = document.createElement("button");
+    removeBtn.type = "button";
+    removeBtn.className = "btn danger small";
+    removeBtn.textContent = "Удалить";
+    removeBtn.addEventListener("click", () => removeItem(index));
+    actions.appendChild(removeBtn);
+
+    card.appendChild(thumb);
+    card.appendChild(info);
+    card.appendChild(actions);
+    return card;
+  }
+
+  function createMiniField(label, value, onChange, step, min) {
+    const wrap = document.createElement("label");
+    wrap.className = "field-mini";
+    const title = document.createElement("span");
+    title.textContent = label;
+    const input = document.createElement("input");
+    input.type = "number";
+    input.value = String(value);
+    if (step) input.step = step;
+    if (min) input.min = min;
+    input.addEventListener("change", () => onChange(input.value));
+    wrap.appendChild(title);
+    wrap.appendChild(input);
+    return wrap;
+  }
+
+  function createItemThumb(shortname, altText) {
+    const img = document.createElement("img");
+    img.className = "item-thumb";
+    img.alt = altText || shortname;
+    img.loading = "lazy";
+    img.decoding = "async";
+    img.src = getItemIconUrl(shortname);
+    img.addEventListener("error", () => {
+      if (img.dataset.fallback === "1") return;
+      img.dataset.fallback = "1";
+      img.src = createFallbackIconDataUrl(shortname);
+    });
+    return img;
+  }
+
+  function getItemIconUrl(shortname) {
+    const key = normalizeKey(shortname);
+    if (!key) return createFallbackIconDataUrl("item");
+    return ITEM_ICON_BASE + encodeURIComponent(key) + ".png";
+  }
+
+  function createFallbackIconDataUrl(shortname) {
+    const key = normalizeKey(shortname);
+    const text = key ? key.slice(0, 2).toUpperCase() : "??";
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="100%" height="100%" rx="10" fill="#1b2431"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#8ea0ba" font-family="Segoe UI" font-size="18">${text}</text></svg>`;
+    return "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg);
+  }
+
+  function beginDrag(event, payload) {
+    state.dragPayload = payload;
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = payload.source === "library" ? "copy" : "move";
+      event.dataTransfer.setData("text/plain", JSON.stringify(payload));
+    }
+  }
+
+  function resolveDragPayload(event) {
+    if (state.dragPayload) return state.dragPayload;
+    if (!event || !event.dataTransfer) return null;
+    const raw = event.dataTransfer.getData("text/plain");
+    if (!raw) return null;
+    try {
+      const payload = JSON.parse(raw);
+      if (!payload || typeof payload !== "object") return null;
+      if (payload.source === "library" && normalizeKey(payload.shortname)) return payload;
+      if (payload.source === "container" && Number.isInteger(payload.index)) return payload;
+    } catch (_err) {
+      return null;
+    }
+    return null;
+  }
+
+  function clearDragPayload() {
+    state.dragPayload = null;
+    if (els.containerItemsDrop) els.containerItemsDrop.classList.remove("drag-active");
+    if (els.containerTrashDrop) els.containerTrashDrop.classList.remove("drag-active");
+    document.querySelectorAll(".drag-target").forEach((node) => node.classList.remove("drag-target"));
+  }
+
+  function onContainerDropZoneDragOver(event) {
+    const payload = resolveDragPayload(event);
+    if (!payload) return;
+    event.preventDefault();
+    els.containerItemsDrop.classList.add("drag-active");
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = payload.source === "library" ? "copy" : "move";
+    }
+  }
+
+  function onContainerDropZoneDrop(event) {
+    event.preventDefault();
+    const payload = resolveDragPayload(event);
+    els.containerItemsDrop.classList.remove("drag-active");
+    if (!payload) {
+      clearDragPayload();
+      return;
+    }
+
+    const rule = getSelectedRule();
+    if (!rule || !Array.isArray(rule["Items"])) {
+      clearDragPayload();
+      return;
+    }
+
+    if (payload.source === "library") {
+      addItemToRule(payload.shortname, rule["Items"].length, readAddItemTemplate());
+    } else if (payload.source === "container") {
+      moveRuleItem(payload.index, rule["Items"].length);
+    }
+    clearDragPayload();
+  }
+
+  function onTrashDropZoneDragOver(event) {
+    const payload = resolveDragPayload(event);
+    if (!payload || payload.source !== "container") return;
+    event.preventDefault();
+    els.containerTrashDrop.classList.add("drag-active");
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = "move";
+    }
+  }
+
+  function onTrashDropZoneDrop(event) {
+    event.preventDefault();
+    const payload = resolveDragPayload(event);
+    els.containerTrashDrop.classList.remove("drag-active");
+    if (!payload || payload.source !== "container") {
+      clearDragPayload();
+      return;
+    }
+
+    removeItem(payload.index);
+    clearDragPayload();
+  }
+
   function renderAll() {
     if (!state.selectedRuleKey) {
       const keys = getRuleKeys();
@@ -892,8 +1371,14 @@
     renderGlobals();
     renderCatalogInfo();
     rebuildItemAndContainerDatalists();
+    if (els.librarySearch) {
+      els.librarySearch.value = state.librarySearch;
+    }
+    renderLibraryCategoryOptions();
+    renderLibraryCategoryBadges();
     renderAddItemNameHint();
     renderAddItemSuggestions();
+    renderItemLibrary();
     renderRulesList();
     renderRuleEditor();
     renderOutput();
@@ -1012,6 +1497,7 @@
     if (!rule) {
       els.noRuleState.classList.remove("hidden");
       els.ruleEditor.classList.add("hidden");
+      renderContainerItemsVisual();
       return;
     }
 
@@ -1047,6 +1533,8 @@
       tr.appendChild(tdActions);
       els.itemsBody.appendChild(tr);
     });
+
+    renderContainerItemsVisual();
   }
 
   function createCellInput(value, onChange, type, listId, step) {
