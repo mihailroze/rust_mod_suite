@@ -47,6 +47,24 @@
         <span>Debug лог</span>
       </label>
       <div class="hint" id="catalogInfo">Каталог: не загружен</div>
+
+      <h3>Паттерн улучшенного лута</h3>
+      <label class="row">
+        <span>Профиль усиления</span>
+        <select id="lootPatternPreset">
+          <option value="improved_light">Легкий буст</option>
+          <option value="improved_medium" selected>Средний буст</option>
+          <option value="improved_aggressive">Сильный буст</option>
+        </select>
+      </label>
+      <label class="row">
+        <span>Сила паттерна (0.5 - 3.0)</span>
+        <input id="lootPatternPower" type="number" min="0.5" max="3" step="0.1" value="1.0">
+      </label>
+      <div class="row">
+        <button id="applyLootPatternBtn" class="btn ok">Применить ко всем контейнерам</button>
+      </div>
+      <div id="lootPatternStatus" class="hint"></div>
     </section>
 
     <section class="panel rules">

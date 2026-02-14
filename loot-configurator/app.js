@@ -29,6 +29,10 @@
     pluginEnabled: document.getElementById("pluginEnabled"),
     useVanillaNoRule: document.getElementById("useVanillaNoRule"),
     debugLog: document.getElementById("debugLog"),
+    lootPatternPreset: document.getElementById("lootPatternPreset"),
+    lootPatternPower: document.getElementById("lootPatternPower"),
+    applyLootPatternBtn: document.getElementById("applyLootPatternBtn"),
+    lootPatternStatus: document.getElementById("lootPatternStatus"),
     catalogInfo: document.getElementById("catalogInfo"),
     ruleSearch: document.getElementById("ruleSearch"),
     newRuleKey: document.getElementById("newRuleKey"),
@@ -182,6 +186,9 @@
     els.pluginEnabled.addEventListener("change", syncGlobalInputsToState);
     els.useVanillaNoRule.addEventListener("change", syncGlobalInputsToState);
     els.debugLog.addEventListener("change", syncGlobalInputsToState);
+    if (els.applyLootPatternBtn) {
+      els.applyLootPatternBtn.addEventListener("click", onApplyLootPatternClicked);
+    }
     els.ruleSearch.addEventListener("input", renderRulesList);
     els.addRuleBtn.addEventListener("click", onAddRuleClicked);
     if (els.addAllRulesBtn) {
@@ -378,6 +385,181 @@
       );
     } finally {
       els.deployPluginBtn.disabled = false;
+    }
+  }
+
+  function setLootPatternStatus(text, isError) {
+    if (!els.lootPatternStatus) return;
+    els.lootPatternStatus.textContent = String(text || "");
+    els.lootPatternStatus.style.color = isError ? "#ff7b72" : "#a8b3c2";
+  }
+
+  function parsePatternPower() {
+    return clampFloat(parseFloat(els.lootPatternPower.value), 0.5, 3, 1);
+  }
+
+  function onApplyLootPatternClicked() {
+    const rules = state.config["Rules by container key"] || {};
+    const keys = Object.keys(rules);
+    if (keys.length === 0) {
+      setLootPatternStatus("Нет правил для применения паттерна.", true);
+      return;
+    }
+
+    const preset = String(els.lootPatternPreset.value || "improved_medium");
+    const power = parsePatternPower();
+    els.lootPatternPower.value = power.toFixed(1);
+
+    let touchedRules = 0;
+    let changedItems = 0;
+    let skippedEmpty = 0;
+
+    for (const key of keys) {
+      const rule = rules[key];
+      if (!rule || !Array.isArray(rule["Items"]) || rule["Items"].length === 0) {
+        skippedEmpty += 1;
+        continue;
+      }
+
+      const profile = buildLootPatternProfile(key, preset, power);
+      applyLootPatternToRule(rule, profile);
+      touchedRules += 1;
+      changedItems += rule["Items"].length;
+    }
+
+    renderAll();
+    setLootPatternStatus(
+      `Паттерн применен: правил ${touchedRules}, предметов ${changedItems}, пропущено пустых правил ${skippedEmpty}.`,
+      false
+    );
+  }
+
+  function getLootPatternBaseProfile(preset) {
+    switch (preset) {
+      case "improved_light":
+        return {
+          amountMultiplier: 1.15,
+          chanceBonus: 0.05,
+          weightMultiplier: 1.07,
+          rollBonus: 1,
+          maxStacksBonus: 1,
+          qualityBias: 0.8
+        };
+      case "improved_aggressive":
+        return {
+          amountMultiplier: 1.60,
+          chanceBonus: 0.13,
+          weightMultiplier: 1.18,
+          rollBonus: 2,
+          maxStacksBonus: 3,
+          qualityBias: 1.35
+        };
+      case "improved_medium":
+      default:
+        return {
+          amountMultiplier: 1.35,
+          chanceBonus: 0.09,
+          weightMultiplier: 1.12,
+          rollBonus: 1,
+          maxStacksBonus: 2,
+          qualityBias: 1.0
+        };
+    }
+  }
+
+  function getContainerTier(containerKey) {
+    const key = normalizeKey(containerKey);
+    if (!key) return "mid";
+
+    if (key.includes("codelockedhackablecrate") || key.includes("crate_elite") || key.includes("bradley")) return "elite";
+    if (key.includes("supply_drop") || key.includes("crate_underwater") || key.includes("underwater") || key.includes("vehicle_parts")) return "high";
+    if (key.includes("loot-barrel") || key.includes("loot_barrel") || key.includes("oil_barrel") || key.includes("trash")) return "low";
+    return "mid";
+  }
+
+  function buildLootPatternProfile(containerKey, preset, power) {
+    const base = getLootPatternBaseProfile(preset);
+    const scaled = {
+      amountMultiplier: 1 + (base.amountMultiplier - 1) * power,
+      chanceBonus: base.chanceBonus * power,
+      weightMultiplier: 1 + (base.weightMultiplier - 1) * power,
+      rollBonus: Math.max(0, Math.round(base.rollBonus * power)),
+      maxStacksBonus: Math.max(0, Math.round(base.maxStacksBonus * power)),
+      qualityBias: base.qualityBias * power
+    };
+
+    const tier = getContainerTier(containerKey);
+    let tierAdjust;
+    switch (tier) {
+      case "low":
+        tierAdjust = { amount: 0.85, chance: 0.85, weight: 0.90, rolls: 0, stacks: 0 };
+        break;
+      case "high":
+        tierAdjust = { amount: 1.15, chance: 1.10, weight: 1.05, rolls: 1, stacks: 1 };
+        break;
+      case "elite":
+        tierAdjust = { amount: 1.30, chance: 1.20, weight: 1.10, rolls: 1, stacks: 2 };
+        break;
+      case "mid":
+      default:
+        tierAdjust = { amount: 1.00, chance: 1.00, weight: 1.00, rolls: 0, stacks: 0 };
+        break;
+    }
+
+    return {
+      amountMultiplier: scaled.amountMultiplier * tierAdjust.amount,
+      chanceBonus: scaled.chanceBonus * tierAdjust.chance,
+      weightMultiplier: 1 + (scaled.weightMultiplier - 1) * tierAdjust.weight,
+      rollBonus: scaled.rollBonus + tierAdjust.rolls,
+      maxStacksBonus: scaled.maxStacksBonus + tierAdjust.stacks,
+      qualityBias: scaled.qualityBias * tierAdjust.amount
+    };
+  }
+
+  function getItemCategoryBonus(item) {
+    const meta = getItemMeta(item["Shortname"]);
+    const category = normalizeKey(meta && meta.category ? meta.category : "");
+    switch (category) {
+      case "weapon":
+        return 0.20;
+      case "ammunition":
+        return 0.16;
+      case "component":
+        return 0.14;
+      case "medical":
+        return 0.10;
+      case "resource":
+        return 0.08;
+      case "food":
+        return 0.05;
+      default:
+        return 0.04;
+    }
+  }
+
+  function applyLootPatternToRule(rule, profile) {
+    rule["Enabled"] = true;
+    rule["Override default loot"] = true;
+
+    rule["Min rolls"] = clampInt(parseInt(rule["Min rolls"], 10) + profile.rollBonus, 0, 64, 0);
+    rule["Max rolls"] = clampInt(parseInt(rule["Max rolls"], 10) + profile.rollBonus, 0, 64, rule["Min rolls"]);
+    if (rule["Max rolls"] < rule["Min rolls"]) rule["Max rolls"] = rule["Min rolls"];
+
+    const maxStacks = Math.max(0, clampInt(parseInt(rule["Max stacks in container (0 = unlimited)"], 10), 0, 99999, 0));
+    if (maxStacks > 0) {
+      rule["Max stacks in container (0 = unlimited)"] = clampInt(maxStacks + profile.maxStacksBonus, 0, 99999, maxStacks);
+    }
+
+    for (const item of rule["Items"]) {
+      const categoryBonus = getItemCategoryBonus(item) * profile.qualityBias;
+      const amountBoost = profile.amountMultiplier * (1 + categoryBonus * 0.35);
+      const chanceBoost = profile.chanceBonus * (1 + categoryBonus * 0.45);
+      const weightBoost = profile.weightMultiplier * (1 + categoryBonus * 0.20);
+
+      item["Min amount"] = Math.max(1, Math.round(item["Min amount"] * amountBoost));
+      item["Max amount"] = Math.max(item["Min amount"], Math.round(item["Max amount"] * amountBoost));
+      item["Chance (0-1)"] = clampFloat(item["Chance (0-1)"] + chanceBoost, 0, 1, item["Chance (0-1)"]);
+      item["Weight"] = Math.max(0.01, clampFloat(item["Weight"] * weightBoost, 0.01, 100000, item["Weight"]));
     }
   }
 
