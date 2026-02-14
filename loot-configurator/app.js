@@ -56,6 +56,8 @@
     ruleMinRolls: document.getElementById("ruleMinRolls"),
     ruleMaxRolls: document.getElementById("ruleMaxRolls"),
     ruleMaxStacks: document.getElementById("ruleMaxStacks"),
+    rulePrivilegeLootBonusScale: document.getElementById("rulePrivilegeLootBonusScale"),
+    rulePrivilegeLootBonusMaxExtraStacks: document.getElementById("rulePrivilegeLootBonusMaxExtraStacks"),
     itemsBody: document.getElementById("itemsBody"),
     containerItemsMeta: document.getElementById("containerItemsMeta"),
     containerItemsDrop: document.getElementById("containerItemsDrop"),
@@ -95,6 +97,8 @@
       "Allow duplicate rolls": true,
       "Force at least one item": true,
       "Disable privilege loot bonus": false,
+      "Privilege loot bonus scale (0-1)": 1,
+      "Privilege loot bonus max extra stacks (0 = unlimited)": 0,
       "Max stacks in container (0 = unlimited)": 0,
       "Items": []
     };
@@ -132,6 +136,11 @@
     if (typeof source["Disable privilege loot bonus"] === "boolean") {
       rule["Disable privilege loot bonus"] = source["Disable privilege loot bonus"];
     }
+    rule["Privilege loot bonus scale (0-1)"] = clampFloat(parseFloat(source["Privilege loot bonus scale (0-1)"]), 0, 1, 1);
+    rule["Privilege loot bonus max extra stacks (0 = unlimited)"] = Math.max(
+      0,
+      clampInt(parseInt(source["Privilege loot bonus max extra stacks (0 = unlimited)"], 10), 0, 99999, 0)
+    );
 
     rule["Max stacks in container (0 = unlimited)"] = Math.max(
       0,
@@ -224,6 +233,12 @@
     els.ruleMinRolls.addEventListener("input", onRuleSettingsChanged);
     els.ruleMaxRolls.addEventListener("input", onRuleSettingsChanged);
     els.ruleMaxStacks.addEventListener("input", onRuleSettingsChanged);
+    if (els.rulePrivilegeLootBonusScale) {
+      els.rulePrivilegeLootBonusScale.addEventListener("input", onRuleSettingsChanged);
+    }
+    if (els.rulePrivilegeLootBonusMaxExtraStacks) {
+      els.rulePrivilegeLootBonusMaxExtraStacks.addEventListener("input", onRuleSettingsChanged);
+    }
     if (els.librarySearch) {
       els.librarySearch.addEventListener("input", onLibrarySearchChanged);
     }
@@ -713,6 +728,17 @@
     rule["Force at least one item"] = !!els.ruleForceOne.checked;
     if (els.ruleDisablePrivilegeLootBonus) {
       rule["Disable privilege loot bonus"] = !!els.ruleDisablePrivilegeLootBonus.checked;
+    }
+    if (els.rulePrivilegeLootBonusScale) {
+      rule["Privilege loot bonus scale (0-1)"] = clampFloat(parseFloat(els.rulePrivilegeLootBonusScale.value), 0, 1, 1);
+      els.rulePrivilegeLootBonusScale.value = String(rule["Privilege loot bonus scale (0-1)"]);
+    }
+    if (els.rulePrivilegeLootBonusMaxExtraStacks) {
+      rule["Privilege loot bonus max extra stacks (0 = unlimited)"] = Math.max(
+        0,
+        clampInt(parseInt(els.rulePrivilegeLootBonusMaxExtraStacks.value, 10), 0, 99999, 0)
+      );
+      els.rulePrivilegeLootBonusMaxExtraStacks.value = String(rule["Privilege loot bonus max extra stacks (0 = unlimited)"]);
     }
     rule["Min rolls"] = clampInt(parseInt(els.ruleMinRolls.value, 10), 0, 64, 2);
     rule["Max rolls"] = clampInt(parseInt(els.ruleMaxRolls.value, 10), 0, 64, 4);
@@ -1522,6 +1548,18 @@
     els.ruleForceOne.checked = !!rule["Force at least one item"];
     if (els.ruleDisablePrivilegeLootBonus) {
       els.ruleDisablePrivilegeLootBonus.checked = !!rule["Disable privilege loot bonus"];
+    }
+    if (els.rulePrivilegeLootBonusScale) {
+      els.rulePrivilegeLootBonusScale.value = String(rule["Privilege loot bonus scale (0-1)"]);
+      if (els.ruleDisablePrivilegeLootBonus) {
+        els.rulePrivilegeLootBonusScale.disabled = !!els.ruleDisablePrivilegeLootBonus.checked;
+      }
+    }
+    if (els.rulePrivilegeLootBonusMaxExtraStacks) {
+      els.rulePrivilegeLootBonusMaxExtraStacks.value = String(rule["Privilege loot bonus max extra stacks (0 = unlimited)"]);
+      if (els.ruleDisablePrivilegeLootBonus) {
+        els.rulePrivilegeLootBonusMaxExtraStacks.disabled = !!els.ruleDisablePrivilegeLootBonus.checked;
+      }
     }
     els.ruleMinRolls.value = String(rule["Min rolls"]);
     els.ruleMaxRolls.value = String(rule["Max rolls"]);

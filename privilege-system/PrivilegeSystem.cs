@@ -12,7 +12,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("PrivilegeSystem", "Shmatko", "0.9.1")]
+    [Info("PrivilegeSystem", "Shmatko", "0.9.2")]
     [Description("Timed rank/privilege management for Rust servers (VIP, Premium, Elite).")]
     public class PrivilegeSystem : RustPlugin
     {
@@ -5924,18 +5924,44 @@ namespace Oxide.Plugins
             return shortPrefabName.IndexOf("barrel", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
-        // ContainerLootManager can return false via this hook for per-container blocking.
-        private bool IsContainerLootBonusBlocked(BasePlayer player, LootContainer lootContainer)
+        // ContainerLootManager can tune/disable rank loot bonus per container via hooks.
+        private bool TryGetContainerLootBonusTuning(BasePlayer player, LootContainer lootContainer, out float scale, out int maxExtraStacks)
         {
+            scale = 1f;
+            maxExtraStacks = 0;
+
             if (lootContainer == null) return false;
 
-            var hookResult = Interface.CallHook("CanPrivilegeContainerLootBonus", player, lootContainer);
-            if (hookResult is bool boolResult)
+            var permissionResult = Interface.CallHook("CanPrivilegeContainerLootBonus", player, lootContainer);
+            if (permissionResult is bool allowed && !allowed)
             {
-                return !boolResult;
+                return false;
             }
 
-            return false;
+            var scaleResult = Interface.CallHook("GetPrivilegeContainerLootBonusScale", player, lootContainer);
+            if (scaleResult != null)
+            {
+                if (scaleResult is float sFloat) scale = sFloat;
+                else if (scaleResult is double sDouble) scale = (float)sDouble;
+                else if (scaleResult is int sInt) scale = sInt;
+            }
+
+            scale = Mathf.Clamp(scale, 0f, 1f);
+            if (scale <= 0.0001f)
+            {
+                return false;
+            }
+
+            var maxResult = Interface.CallHook("GetPrivilegeContainerLootBonusMaxExtraStacks", player, lootContainer);
+            if (maxResult != null)
+            {
+                if (maxResult is int mInt) maxExtraStacks = mInt;
+                else if (maxResult is float mFloat) maxExtraStacks = Mathf.RoundToInt(mFloat);
+                else if (maxResult is double mDouble) maxExtraStacks = (int)Math.Round(mDouble);
+            }
+
+            if (maxExtraStacks < 0) maxExtraStacks = 0;
+            return true;
         }
 
         private bool TryApplyBarrelLootBonus(LootContainer lootContainer, ulong attackerId, BasePlayer attackerPlayer = null)
@@ -5951,14 +5977,19 @@ namespace Oxide.Plugins
             RankDefinition rank;
             if (!TryGetActivePrivilege(attackerId, out record, out rank) || rank == null) return false;
             if (rank.ContainerLootMultiplier <= 1.01f) return false;
-            if (IsContainerLootBonusBlocked(attackerPlayer, lootContainer)) return false;
+
+            float bonusScale;
+            if (!TryGetContainerLootBonusTuning(attackerPlayer, lootContainer, out bonusScale, out _)) return false;
+
+            var effectiveMultiplier = 1f + (rank.ContainerLootMultiplier - 1f) * bonusScale;
+            if (effectiveMultiplier <= 1.01f) return false;
 
             var changedStacks = 0;
             var snapshot = lootContainer.inventory.itemList.ToArray();
             foreach (var item in snapshot)
             {
                 if (item == null || item.info == null || item.amount <= 0) continue;
-                item.amount = Mathf.CeilToInt(item.amount * rank.ContainerLootMultiplier);
+                item.amount = Mathf.CeilToInt(item.amount * effectiveMultiplier);
                 changedStacks++;
             }
 
@@ -5969,7 +6000,7 @@ namespace Oxide.Plugins
             var receiver = attackerPlayer ?? BasePlayer.FindByID(attackerId) ?? BasePlayer.FindSleeping(attackerId);
             if (receiver != null && receiver.IsConnected)
             {
-                SendReply(receiver, $"Бонус ранга: лут бочек x{rank.ContainerLootMultiplier:0.##}.");
+                SendReply(receiver, $"Бонус ранга: лут бочек x{effectiveMultiplier:0.##}.");
             }
 
             return true;
@@ -6028,7 +6059,13 @@ namespace Oxide.Plugins
             RankDefinition rank;
             if (!TryGetActivePrivilege(player.userID, out record, out rank) || rank == null) return;
             if (rank.ContainerLootMultiplier <= 1.01f) return;
-            if (IsContainerLootBonusBlocked(player, lootContainer)) return;
+
+            float bonusScale;
+            int maxExtraStacks;
+            if (!TryGetContainerLootBonusTuning(player, lootContainer, out bonusScale, out maxExtraStacks)) return;
+
+            var effectiveMultiplier = 1f + (rank.ContainerLootMultiplier - 1f) * bonusScale;
+            if (effectiveMultiplier <= 1.01f) return;
 
             var containerId = lootContainer.net.ID.Value;
             HashSet<ulong> claimedUsers;
@@ -6045,7 +6082,12 @@ namespace Oxide.Plugins
             {
                 if (player == null || !player.IsConnected) return;
                 if (lootContainer == null || lootContainer.IsDestroyed || lootContainer.inventory == null || lootContainer.net == null) return;
-                if (IsContainerLootBonusBlocked(player, lootContainer)) return;
+
+                float deferredScale;
+                int deferredMaxExtraStacks;
+                if (!TryGetContainerLootBonusTuning(player, lootContainer, out deferredScale, out deferredMaxExtraStacks)) return;
+                var deferredEffectiveMultiplier = 1f + (rank.ContainerLootMultiplier - 1f) * deferredScale;
+                if (deferredEffectiveMultiplier <= 1.01f) return;
 
                 HashSet<ulong> currentClaimedUsers;
                 if (!containerLootBonusClaimed.TryGetValue(containerId, out currentClaimedUsers))
@@ -6062,9 +6104,14 @@ namespace Oxide.Plugins
                 var extraStacks = 0;
                 foreach (var sourceItem in snapshot)
                 {
+                    if (deferredMaxExtraStacks > 0 && extraStacks >= deferredMaxExtraStacks)
+                    {
+                        break;
+                    }
+
                     if (sourceItem == null || sourceItem.info == null || sourceItem.amount <= 0) continue;
 
-                    var extraAmount = Mathf.CeilToInt(sourceItem.amount * (rank.ContainerLootMultiplier - 1f));
+                    var extraAmount = Mathf.CeilToInt(sourceItem.amount * (deferredEffectiveMultiplier - 1f));
                     if (extraAmount <= 0) continue;
 
                     var created = ItemManager.CreateByItemID(sourceItem.info.itemid, extraAmount, sourceItem.skin);
@@ -6083,7 +6130,7 @@ namespace Oxide.Plugins
 
                 if (extraStacks <= 0) return;
                 currentClaimedUsers.Add(player.userID);
-                SendReply(player, $"Бонус ранга: лут контейнеров x{rank.ContainerLootMultiplier:0.##} (доп. стаков: {extraStacks}).");
+                SendReply(player, $"Бонус ранга: лут контейнеров x{deferredEffectiveMultiplier:0.##} (доп. стаков: {extraStacks}).");
             });
         }
 

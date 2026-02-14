@@ -9,7 +9,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("ContainerLootManager", "Shmatko", "0.1.3")]
+    [Info("ContainerLootManager", "Shmatko", "0.1.4")]
     [Description("Per-container loot tables with custom items and spawn chance.")]
     public class ContainerLootManager : RustPlugin
     {
@@ -69,6 +69,12 @@ namespace Oxide.Plugins
 
             [JsonProperty("Disable privilege loot bonus")]
             public bool DisablePrivilegeLootBonus = false;
+
+            [JsonProperty("Privilege loot bonus scale (0-1)")]
+            public float PrivilegeLootBonusScale = 1f;
+
+            [JsonProperty("Privilege loot bonus max extra stacks (0 = unlimited)")]
+            public int PrivilegeLootBonusMaxExtraStacks = 0;
 
             [JsonProperty("Items")]
             public List<LootItemEntry> Items = new List<LootItemEntry>();
@@ -274,6 +280,12 @@ namespace Oxide.Plugins
                     rule.MaxStacks = 0;
                 }
 
+                rule.PrivilegeLootBonusScale = Mathf.Clamp(rule.PrivilegeLootBonusScale, 0f, 1f);
+                if (rule.PrivilegeLootBonusMaxExtraStacks < 0)
+                {
+                    rule.PrivilegeLootBonusMaxExtraStacks = 0;
+                }
+
                 if (rule.Items == null)
                 {
                     rule.Items = new List<LootItemEntry>();
@@ -382,7 +394,53 @@ namespace Oxide.Plugins
                 return false;
             }
 
+            if (rule.PrivilegeLootBonusScale <= 0f)
+            {
+                return false;
+            }
+
             return null;
+        }
+
+        private object GetPrivilegeContainerLootBonusScale(BasePlayer player, LootContainer container)
+        {
+            if (container == null || config == null || !config.Enabled)
+            {
+                return null;
+            }
+
+            string matchedKey;
+            ContainerRule rule;
+            var hasRule = TryFindRule(container, out matchedKey, out rule);
+            if (!hasRule || rule == null || !rule.Enabled)
+            {
+                return null;
+            }
+
+            if (rule.DisablePrivilegeLootBonus)
+            {
+                return 0f;
+            }
+
+            return Mathf.Clamp(rule.PrivilegeLootBonusScale, 0f, 1f);
+        }
+
+        private object GetPrivilegeContainerLootBonusMaxExtraStacks(BasePlayer player, LootContainer container)
+        {
+            if (container == null || config == null || !config.Enabled)
+            {
+                return null;
+            }
+
+            string matchedKey;
+            ContainerRule rule;
+            var hasRule = TryFindRule(container, out matchedKey, out rule);
+            if (!hasRule || rule == null || !rule.Enabled)
+            {
+                return null;
+            }
+
+            return Mathf.Max(0, rule.PrivilegeLootBonusMaxExtraStacks);
         }
 
         private void OnLootSpawn(LootContainer container)
@@ -1277,7 +1335,7 @@ namespace Oxide.Plugins
                 return;
             }
 
-            SendReply(player, $"{key}: enabled={rule.Enabled}, override={rule.OverrideDefaultLoot}, draws={rule.MinRolls}-{rule.MaxRolls}, duplicates={rule.AllowDuplicates}, forceone={rule.ForceAtLeastOneItem}, maxstacks={rule.MaxStacks}");
+            SendReply(player, $"{key}: enabled={rule.Enabled}, override={rule.OverrideDefaultLoot}, draws={rule.MinRolls}-{rule.MaxRolls}, duplicates={rule.AllowDuplicates}, forceone={rule.ForceAtLeastOneItem}, maxstacks={rule.MaxStacks}, privblock={rule.DisablePrivilegeLootBonus}, privscale={rule.PrivilegeLootBonusScale:0.##}, privmaxextra={rule.PrivilegeLootBonusMaxExtraStacks}");
             if (rule.Items == null || rule.Items.Count == 0)
             {
                 SendReply(player, "No items.");
